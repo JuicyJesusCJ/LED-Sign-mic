@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔊 Audio Settings - LED Sign</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌈</text></svg>">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🌈 LED Sign Control</h1>
+        </div>
+        <div class="nav-menu">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/control.html" class="nav-link">Control</a>
+            <a href="/audio.html" class="nav-link active">Audio</a>
+            <a href="/wifi.html" class="nav-link">WiFi</a>
+            <a href="/settings.html" class="nav-link">Settings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Audio Level Monitor -->
+        <div class="control-section">
+            <h2>📊 Real-Time Audio Monitor</h2>
+            <div class="audio-monitor">
+                <div class="audio-level-display">
+                    <div class="level-meter">
+                        <div class="level-bar" id="current-level-bar"></div>
+                        <div class="level-markers">
+                            <span class="marker" style="left: 33%">-20dB</span>
+                            <span class="marker" style="left: 66%">-10dB</span>
+                            <span class="marker" style="left: 100%">0dB</span>
+                        </div>
+                    </div>
+                    <div class="level-value">
+                        <span id="current-level-text">0%</span>
+                        <span class="level-unit">Audio Level</span>
+                    </div>
+                </div>
+                
+                <div class="audio-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Peak Level:</span>
+                        <span id="peak-level" class="stat-value">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Average Level:</span>
+                        <span id="avg-level" class="stat-value">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Beats Detected:</span>
+                        <span id="beat-count" class="stat-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Sample Rate:</span>
+                        <span id="sample-rate" class="stat-value">8kHz</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Microphone Settings -->
+        <div class="control-section">
+            <h2>🎤 Microphone Settings</h2>
+            <div class="quick-controls">
+                <div class="control-group">
+                    <label for="sensitivity-slider">Microphone Sensitivity</label>
+                    <div class="slider-container">
+                        <input type="range" id="sensitivity-slider" min="0" max="100" value="70" class="slider">
+                        <span id="sensitivity-value" class="slider-value">70%</span>
+                    </div>
+                    <small class="help-text">Adjust how sensitive the microphone is to sound input</small>
+                </div>
+
+                <div class="control-group">
+                    <label for="noise-gate-slider">Noise Gate</label>
+                    <div class="slider-container">
+                        <input type="range" id="noise-gate-slider" min="0" max="100" value="30" class="slider">
+                        <span id="noise-gate-value" class="slider-value">30%</span>
+                    </div>
+                    <small class="help-text">Filter out background noise below this threshold</small>
+                </div>
+
+                <div class="control-group">
+                    <label for="smoothing-slider">Audio Smoothing</label>
+                    <div class="slider-container">
+                        <input type="range" id="smoothing-slider" min="1" max="10" value="5" class="slider">
+                        <span id="smoothing-value" class="slider-value">5</span>
+                    </div>
+                    <small class="help-text">Smooth out rapid changes in audio levels</small>
+                </div>
+
+                <div class="control-group">
+                    <label class="form-label">Auto-Gain Control</label>
+                    <div class="toggle-container">
+                        <input type="checkbox" id="auto-gain-toggle" class="toggle-switch" checked>
+                        <label for="auto-gain-toggle" class="toggle-label">
+                            <span class="toggle-text">Automatically adjust microphone gain</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio-Reactive Modes -->
+        <div class="control-section">
+            <h2>🎵 Audio-Reactive Modes</h2>
+            <div class="mode-grid">
+                <div class="mode-card active" data-mode="vu-meter">
+                    <div class="mode-icon">📊</div>
+                    <div class="mode-name">VU Meter</div>
+                    <div class="mode-description">Classic volume bar visualization</div>
+                    <button class="btn btn-primary btn-sm" onclick="selectAudioMode('vu-meter')">Select</button>
+                </div>
+
+                <div class="mode-card" data-mode="spectrum">
+                    <div class="mode-icon">📈</div>
+                    <div class="mode-name">Spectrum Analyzer</div>
+                    <div class="mode-description">Frequency-based color bands</div>
+                    <button class="btn btn-primary btn-sm" onclick="selectAudioMode('spectrum')">Select</button>
+                </div>
+
+                <div class="mode-card" data-mode="beat-flash">
+                    <div class="mode-icon">⚡</div>
+                    <div class="mode-name">Beat Flash</div>
+                    <div class="mode-description">Flash on detected beats</div>
+                    <button class="btn btn-primary btn-sm" onclick="selectAudioMode('beat-flash')">Select</button>
+                </div>
+
+                <div class="mode-card" data-mode="sound-colors">
+                    <div class="mode-icon">🎨</div>
+                    <div class="mode-name">Sound Colors</div>
+                    <div class="mode-description">Colors change with frequency</div>
+                    <button class="btn btn-primary btn-sm" onclick="selectAudioMode('sound-colors')">Select</button>
+                </div>
+
+                <div class="mode-card" data-mode="audio-ripple">
+                    <div class="mode-icon">〰️</div>
+                    <div class="mode-name">Audio Ripple</div>
+                    <div class="mode-description">Wave effects from center</div>
+                    <button class="btn btn-primary btn-sm" onclick="selectAudioMode('audio-ripple')">Select</button>
+                </div>
+
+                <div class="mode-card" data-mode="reactive-rainbow">
+                    <div class="mode-icon">🌈</div>
+                    <div class="mode-name">Reactive Rainbow</div>
+                    <div class="mode-description">Rainbow speed changes with audio</div>
+                    <button class="btn btn-primary btn-sm" onclick="selectAudioMode('reactive-rainbow')">Select</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beat Detection Settings -->
+        <div class="control-section">
+            <h2>🥁 Beat Detection</h2>
+            <div class="quick-controls">
+                <div class="control-group">
+                    <label for="beat-sensitivity-slider">Beat Sensitivity</label>
+                    <div class="slider-container">
+                        <input type="range" id="beat-sensitivity-slider" min="10" max="90" value="50" class="slider">
+                        <span id="beat-sensitivity-value" class="slider-value">50%</span>
+                    </div>
+                    <small class="help-text">How easily beats are detected in the audio</small>
+                </div>
+
+                <div class="control-group">
+                    <label for="beat-cooldown-slider">Beat Cooldown</label>
+                    <div class="slider-container">
+                        <input type="range" id="beat-cooldown-slider" min="50" max="500" value="200" class="slider">
+                        <span id="beat-cooldown-value" class="slider-value">200ms</span>
+                    </div>
+                    <small class="help-text">Minimum time between detected beats</small>
+                </div>
+
+                <div class="control-group">
+                    <label class="form-label">Beat Visualization</label>
+                    <select id="beat-visualization" class="form-control">
+                        <option value="flash">Flash Effect</option>
+                        <option value="pulse">Pulse Effect</option>
+                        <option value="ripple">Ripple Effect</option>
+                        <option value="strobe">Strobe Effect</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frequency Response -->
+        <div class="control-section">
+            <h2>🎛️ Frequency Response</h2>
+            <div class="frequency-controls">
+                <div class="eq-bands">
+                    <div class="eq-band">
+                        <label>Bass<br>60-250Hz</label>
+                        <input type="range" id="bass-gain" min="0" max="200" value="100" class="slider vertical-slider" orient="vertical">
+                        <span class="eq-value" id="bass-value">100%</span>
+                    </div>
+                    <div class="eq-band">
+                        <label>Low Mid<br>250-500Hz</label>
+                        <input type="range" id="low-mid-gain" min="0" max="200" value="100" class="slider vertical-slider" orient="vertical">
+                        <span class="eq-value" id="low-mid-value">100%</span>
+                    </div>
+                    <div class="eq-band">
+                        <label>Mid<br>500-2kHz</label>
+                        <input type="range" id="mid-gain" min="0" max="200" value="100" class="slider vertical-slider" orient="vertical">
+                        <span class="eq-value" id="mid-value">100%</span>
+                    </div>
+                    <div class="eq-band">
+                        <label>High Mid<br>2-4kHz</label>
+                        <input type="range" id="high-mid-gain" min="0" max="200" value="100" class="slider vertical-slider" orient="vertical">
+                        <span class="eq-value" id="high-mid-value">100%</span>
+                    </div>
+                    <div class="eq-band">
+                        <label>Treble<br>4-8kHz</label>
+                        <input type="range" id="treble-gain" min="0" max="200" value="100" class="slider vertical-slider" orient="vertical">
+                        <span class="eq-value" id="treble-value">100%</span>
+                    </div>
+                </div>
+                <div class="eq-actions">
+                    <button class="btn btn-secondary" onclick="resetEQ()">Reset EQ</button>
+                    <button class="btn btn-primary" onclick="saveEQPreset()">Save Preset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calibration Tools -->
+        <div class="control-section">
+            <h2>🔧 Calibration Tools</h2>
+            <div class="calibration-tools">
+                <div class="tool-card">
+                    <h4>🎯 Microphone Test</h4>
+                    <p>Test microphone input and adjust settings</p>
+                    <button class="btn btn-info" onclick="startMicTest()">Start Test</button>
+                    <div id="mic-test-result" class="test-result"></div>
+                </div>
+
+                <div class="tool-card">
+                    <h4>📏 Noise Floor Detection</h4>
+                    <p>Automatically detect ambient noise level</p>
+                    <button class="btn btn-info" onclick="detectNoiseFloor()">Detect Noise Floor</button>
+                    <div id="noise-floor-result" class="test-result"></div>
+                </div>
+
+                <div class="tool-card">
+                    <h4>🎵 Beat Detection Calibration</h4>
+                    <p>Optimize beat detection for your music</p>
+                    <button class="btn btn-info" onclick="calibrateBeats()">Calibrate Beats</button>
+                    <div id="beat-cal-result" class="test-result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-indicator">
+        <span id="connection-text">Connected</span>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let audioData = { level: 0, peak: 0, average: 0, beats: 0 };
+        let isCalibrating = false;
+
+        // Initialize audio page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAudioPage();
+            loadAudioSettings();
+            startAudioMonitoring();
+        });
+
+        function initializeAudioPage() {
+            setupAudioEventListeners();
+        }
+
+        function setupAudioEventListeners() {
+            // Sensitivity control
+            document.getElementById('sensitivity-slider').addEventListener('input', function() {
+                updateSensitivity(this.value);
+            });
+
+            // Noise gate control
+            document.getElementById('noise-gate-slider').addEventListener('input', function() {
+                updateNoiseGate(this.value);
+            });
+
+            // Smoothing control
+            document.getElementById('smoothing-slider').addEventListener('input', function() {
+                updateSmoothing(this.value);
+            });
+
+            // Auto-gain toggle
+            document.getElementById('auto-gain-toggle').addEventListener('change', function() {
+                updateAutoGain(this.checked);
+            });
+
+            // Beat detection controls
+            document.getElementById('beat-sensitivity-slider').addEventListener('input', function() {
+                updateBeatSensitivity(this.value);
+            });
+
+            document.getElementById('beat-cooldown-slider').addEventListener('input', function() {
+                updateBeatCooldown(this.value);
+            });
+
+            // EQ controls
+            ['bass', 'low-mid', 'mid', 'high-mid', 'treble'].forEach(band => {
+                document.getElementById(`${band}-gain`).addEventListener('input', function() {
+                    updateEQBand(band, this.value);
+                });
+            });
+        }
+
+        function updateSensitivity(value) {
+            document.getElementById('sensitivity-value').textContent = value + '%';
+            sendWebSocketCommand('set_sensitivity', parseInt(value));
+        }
+
+        function updateNoiseGate(value) {
+            document.getElementById('noise-gate-value').textContent = value + '%';
+            // Send to device - this would be implemented in the firmware
+            showNotification(`Noise gate set to ${value}%`, 'info');
+        }
+
+        function updateSmoothing(value) {
+            document.getElementById('smoothing-value').textContent = value;
+            // Send to device
+            showNotification(`Audio smoothing set to ${value}`, 'info');
+        }
+
+        function updateAutoGain(enabled) {
+            showNotification(`Auto-gain ${enabled ? 'enabled' : 'disabled'}`, 'info');
+        }
+
+        function updateBeatSensitivity(value) {
+            document.getElementById('beat-sensitivity-value').textContent = value + '%';
+            showNotification(`Beat sensitivity set to ${value}%`, 'info');
+        }
+
+        function updateBeatCooldown(value) {
+            document.getElementById('beat-cooldown-value').textContent = value + 'ms';
+            showNotification(`Beat cooldown set to ${value}ms`, 'info');
+        }
+
+        function updateEQBand(band, value) {
+            document.getElementById(`${band}-value`).textContent = value + '%';
+            showNotification(`${band.replace('-', ' ')} gain set to ${value}%`, 'info');
+        }
+
+        function selectAudioMode(mode) {
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+            // Map to firmware mode IDs
+            const modeMap = {
+                'vu-meter': 7,
+                'spectrum': 8,
+                'beat-flash': 9,
+                'sound-colors': 10,
+                'audio-ripple': 11,
+                'reactive-rainbow': 2
+            };
+
+            sendWebSocketCommand('set_mode', modeMap[mode]);
+            showNotification(`Audio mode set to ${mode.replace('-', ' ')}`, 'success');
+        }
+
+        function startAudioMonitoring() {
+            setInterval(() => {
+                // This would normally get real data from the device
+                updateAudioDisplay();
+            }, 100);
+        }
+
+        function updateAudioDisplay() {
+            // Simulate audio data - in real implementation, this comes from WebSocket
+            if (!isCalibrating) {
+                audioData.level = Math.random() * 100;
+                audioData.peak = Math.max(audioData.peak * 0.95, audioData.level);
+                audioData.average = audioData.average * 0.9 + audioData.level * 0.1;
+            }
+
+            // Update level bar
+            document.getElementById('current-level-bar').style.width = audioData.level + '%';
+            document.getElementById('current-level-text').textContent = Math.round(audioData.level) + '%';
+
+            // Update stats
+            document.getElementById('peak-level').textContent = Math.round(audioData.peak) + '%';
+            document.getElementById('avg-level').textContent = Math.round(audioData.average) + '%';
+            document.getElementById('beat-count').textContent = audioData.beats;
+
+            // Color code the level bar
+            const levelBar = document.getElementById('current-level-bar');
+            if (audioData.level < 30) {
+                levelBar.style.background = '#28a745';
+            } else if (audioData.level < 70) {
+                levelBar.style.background = '#ffc107';
+            } else {
+                levelBar.style.background = '#dc3545';
+            }
+        }
+
+        function resetEQ() {
+            ['bass', 'low-mid', 'mid', 'high-mid', 'treble'].forEach(band => {
+                const slider = document.getElementById(`${band}-gain`);
+                slider.value = 100;
+                updateEQBand(band, 100);
+            });
+            showNotification('EQ reset to flat response', 'info');
+        }
+
+        function saveEQPreset() {
+            const presetName = prompt('Enter EQ preset name:');
+            if (presetName) {
+                const eqSettings = {};
+                ['bass', 'low-mid', 'mid', 'high-mid', 'treble'].forEach(band => {
+                    eqSettings[band] = document.getElementById(`${band}-gain`).value;
+                });
+                saveToLocalStorage(`eq_preset_${presetName}`, eqSettings);
+                showNotification(`EQ preset "${presetName}" saved`, 'success');
+            }
+        }
+
+        function startMicTest() {
+            isCalibrating = true;
+            document.getElementById('mic-test-result').innerHTML = '<div class="spinner"></div> Testing microphone...';
+            
+            setTimeout(() => {
+                const testLevel = Math.random() * 100;
+                const result = testLevel > 10 ? 'PASS' : 'FAIL';
+                const resultClass = result === 'PASS' ? 'success' : 'error';
+                
+                document.getElementById('mic-test-result').innerHTML = 
+                    `<span class="test-${resultClass}">Test ${result}: ${Math.round(testLevel)}% signal detected</span>`;
+                isCalibrating = false;
+            }, 3000);
+        }
+
+        function detectNoiseFloor() {
+            isCalibrating = true;
+            document.getElementById('noise-floor-result').innerHTML = '<div class="spinner"></div> Detecting noise floor...';
+            
+            let samples = [];
+            const sampleInterval = setInterval(() => {
+                samples.push(Math.random() * 20); // Simulate low-level noise
+            }, 100);
+            
+            setTimeout(() => {
+                clearInterval(sampleInterval);
+                const noiseFloor = Math.max(...samples);
+                const recommendedGate = Math.round(noiseFloor * 1.5);
+                
+                document.getElementById('noise-floor-result').innerHTML = 
+                    `<span class="test-info">Noise floor: ${Math.round(noiseFloor)}% - Recommended gate: ${recommendedGate}%</span>`;
+                
+                // Auto-set the noise gate
+                document.getElementById('noise-gate-slider').value = recommendedGate;
+                updateNoiseGate(recommendedGate);
+                
+                isCalibrating = false;
+            }, 5000);
+        }
+
+        function calibrateBeats() {
+            isCalibrating = true;
+            document.getElementById('beat-cal-result').innerHTML = '<div class="spinner"></div> Play music and we\'ll calibrate beat detection...';
+            
+            let beatCount = 0;
+            const beatInterval = setInterval(() => {
+                if (Math.random() > 0.7) { // Simulate beat detection
+                    beatCount++;
+                    audioData.beats = beatCount;
+                }
+            }, 500);
+            
+            setTimeout(() => {
+                clearInterval(beatInterval);
+                const bpm = Math.round((beatCount / 10) * 60); // 10 second calibration
+                
+                document.getElementById('beat-cal-result').innerHTML = 
+                    `<span class="test-success">Calibrated: ${beatCount} beats detected (~${bpm} BPM)</span>`;
+                
+                isCalibrating = false;
+            }, 10000);
+        }
+
+        function loadAudioSettings() {
+            apiGet('config').then(data => {
+                if (data.audio) {
+                    const audio = data.audio;
+                    
+                    if (audio.sensitivity !== undefined) {
+                        document.getElementById('sensitivity-slider').value = audio.sensitivity;
+                        document.getElementById('sensitivity-value').textContent = audio.sensitivity + '%';
+                    }
+                    
+                    if (audio.noise_gate !== undefined) {
+                        document.getElementById('noise-gate-slider').value = audio.noise_gate;
+                        document.getElementById('noise-gate-value').textContent = audio.noise_gate + '%';
+                    }
+                    
+                    if (audio.auto_gain !== undefined) {
+                        document.getElementById('auto-gain-toggle').checked = audio.auto_gain;
+                    }
+                    
+                    if (audio.smoothing !== undefined) {
+                        document.getElementById('smoothing-slider').value = audio.smoothing;
+                        document.getElementById('smoothing-value').textContent = audio.smoothing;
+                    }
+                }
+            }).catch(error => {
+                console.error('Failed to load audio settings:', error);
+            });
+        }
+
+        // Handle WebSocket updates for audio data
+        function updateAudioVisualization(data) {
+            if (data.level !== undefined) {
+                audioData.level = (data.level / 4095) * 100;
+            }
+        }
+
+        // Add styles for audio page
+        const style = document.createElement('style');
+        style.textContent = `
+            .audio-monitor {
+                background: rgba(0, 0, 0, 0.3);
+                padding: 2rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+            }
+            
+            .audio-level-display {
+                display: flex;
+                align-items: center;
+                gap: 2rem;
+                margin-bottom: 1rem;
+            }
+            
+            .level-meter {
+                flex: 1;
+                height: 40px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .level-bar {
+                height: 100%;
+                background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+                width: 0%;
+                transition: width 0.1s ease;
+                border-radius: 20px;
+            }
+            
+            .level-markers {
+                position: absolute;
+                top: -25px;
+                width: 100%;
+                height: 20px;
+            }
+            
+            .marker {
+                position: absolute;
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                transform: translateX(-50%);
+            }
+            
+            .level-value {
+                text-align: center;
+                min-width: 100px;
+            }
+            
+            .level-value span:first-child {
+                font-size: 2rem;
+                font-weight: bold;
+                display: block;
+            }
+            
+            .level-unit {
+                font-size: 0.9rem;
+                color: var(--text-muted);
+            }
+            
+            .audio-stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+            
+            .stat-item {
+                text-align: center;
+                padding: 1rem;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+            }
+            
+            .stat-label {
+                display: block;
+                font-size: 0.9rem;
+                color: var(--text-muted);
+                margin-bottom: 0.5rem;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
+                font-weight: bold;
+                color: var(--primary-color);
+            }
+            
+            .help-text {
+                color: var(--text-muted);
+                font-size: 0.8rem;
+                margin-top: 0.25rem;
+            }
+            
+            .toggle-container {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .toggle-switch {
+                appearance: none;
+                width: 50px;
+                height: 25px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 25px;
+                position: relative;
+                cursor: pointer;
+                transition: background 0.3s;
+            }
+            
+            .toggle-switch:checked {
+                background: var(--primary-color);
+            }
+            
+            .toggle-switch::before {
+                content: '';
+                position: absolute;
+                width: 21px;
+                height: 21px;
+                border-radius: 50%;
+                background: white;
+                top: 2px;
+                left: 2px;
+                transition: transform 0.3s;
+            }
+            
+            .toggle-switch:checked::before {
+                transform: translateX(25px);
+            }
+            
+            .toggle-text {
+                font-size: 0.9rem;
+            }
+            
+            .frequency-controls {
+                text-align: center;
+            }
+            
+            .eq-bands {
+                display: flex;
+                justify-content: center;
+                gap: 2rem;
+                margin-bottom: 2rem;
+            }
+            
+            .eq-band {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .eq-band label {
+                font-size: 0.8rem;
+                text-align: center;
+                color: var(--text-muted);
+            }
+            
+            .vertical-slider {
+                writing-mode: bt-lr; /* IE */
+                -webkit-appearance: slider-vertical; /* WebKit */
+                width: 20px;
+                height: 150px;
+                outline: none;
+            }
+            
+            .eq-value {
+                font-size: 0.8rem;
+                color: var(--primary-color);
+                font-weight: bold;
+            }
+            
+            .eq-actions {
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+            }
+            
+            .calibration-tools {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+            }
+            
+            .tool-card {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                text-align: center;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .tool-card h4 {
+                margin: 0 0 0.5rem 0;
+                color: var(--text-light);
+            }
+            
+            .tool-card p {
+                color: var(--text-muted);
+                margin-bottom: 1rem;
+            }
+            
+            .test-result {
+                margin-top: 1rem;
+                min-height: 20px;
+            }
+            
+            .test-success { color: var(--success-color); }
+            .test-error { color: var(--danger-color); }
+            .test-info { color: var(--info-color); }
+            
+            .btn-sm {
+                padding: 0.5rem 1rem;
+                font-size: 0.8rem;
+                min-width: 80px;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

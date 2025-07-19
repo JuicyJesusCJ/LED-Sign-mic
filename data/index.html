@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌈 LED Sign Control</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌈</text></svg>">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🌈 LED Sign Control</h1>
+        </div>
+        <div class="nav-menu">
+            <a href="/" class="nav-link active">Dashboard</a>
+            <a href="/control.html" class="nav-link">Control</a>
+            <a href="/audio.html" class="nav-link">Audio</a>
+            <a href="/wifi.html" class="nav-link">WiFi</a>
+            <a href="/settings.html" class="nav-link">Settings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Status Dashboard -->
+        <div class="status-grid">
+            <div class="status-card">
+                <div class="status-icon">🔌</div>
+                <div class="status-content">
+                    <h3>Power Status</h3>
+                    <p id="power-status" class="status-value">ON</p>
+                    <button id="power-toggle" class="btn btn-primary">Toggle Power</button>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-icon">🎨</div>
+                <div class="status-content">
+                    <h3>Current Mode</h3>
+                    <p id="current-mode" class="status-value">Rainbow Cycle</p>
+                    <button id="next-mode" class="btn btn-secondary">Next Mode</button>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-icon">🔊</div>
+                <div class="status-content">
+                    <h3>Audio Level</h3>
+                    <p id="audio-level" class="status-value">0</p>
+                    <div class="audio-meter">
+                        <div id="audio-bar" class="audio-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-card">
+                <div class="status-icon">📶</div>
+                <div class="status-content">
+                    <h3>WiFi Status</h3>
+                    <p id="wifi-status" class="status-value">Connected</p>
+                    <p id="wifi-ssid" class="status-detail">MyNetwork</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Controls -->
+        <div class="control-section">
+            <h2>Quick Controls</h2>
+            <div class="quick-controls">
+                <div class="control-group">
+                    <label for="brightness-slider">Brightness</label>
+                    <div class="slider-container">
+                        <input type="range" id="brightness-slider" min="0" max="100" value="80" class="slider">
+                        <span id="brightness-value" class="slider-value">80%</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="speed-slider">Speed</label>
+                    <div class="slider-container">
+                        <input type="range" id="speed-slider" min="0" max="100" value="50" class="slider">
+                        <span id="speed-value" class="slider-value">50%</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="color-picker">Color</label>
+                    <div class="color-container">
+                        <input type="color" id="color-picker" value="#ff0000" class="color-picker">
+                        <span id="color-value" class="color-value">#FF0000</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Information -->
+        <div class="info-section">
+            <h2>System Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">IP Address:</span>
+                    <span id="ip-address" class="info-value">192.168.1.100</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Uptime:</span>
+                    <span id="uptime" class="info-value">0 minutes</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Free Memory:</span>
+                    <span id="free-memory" class="info-value">128 KB</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Device Name:</span>
+                    <span id="device-name" class="info-value">LED-Sign</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- LED Pattern Preview -->
+        <div class="preview-section">
+            <h2>LED Pattern Preview</h2>
+            <div class="led-strip-preview">
+                <div class="led-container" id="led-preview">
+                    <!-- LED dots will be generated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-indicator">
+        <span id="connection-text">Connected</span>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            initializeWebSocket();
+            loadSystemStatus();
+        });
+
+        function initializeDashboard() {
+            // Generate LED preview dots
+            const ledContainer = document.getElementById('led-preview');
+            for (let i = 0; i < 100; i++) {
+                const led = document.createElement('div');
+                led.className = 'led-dot';
+                led.id = `led-${i}`;
+                ledContainer.appendChild(led);
+            }
+
+            // Initialize event listeners
+            document.getElementById('power-toggle').addEventListener('click', togglePower);
+            document.getElementById('next-mode').addEventListener('click', nextMode);
+            
+            // Slider event listeners
+            document.getElementById('brightness-slider').addEventListener('input', function() {
+                updateBrightness(this.value);
+            });
+            
+            document.getElementById('speed-slider').addEventListener('input', function() {
+                updateSpeed(this.value);
+            });
+            
+            document.getElementById('color-picker').addEventListener('change', function() {
+                updateColor(this.value);
+            });
+        }
+
+        function togglePower() {
+            const currentStatus = document.getElementById('power-status').textContent === 'ON';
+            sendWebSocketCommand('set_power', !currentStatus);
+        }
+
+        function nextMode() {
+            const currentModeElement = document.getElementById('current-mode');
+            const currentMode = currentModeElement.dataset.modeId || 0;
+            sendWebSocketCommand('set_mode', (parseInt(currentMode) + 1) % 12);
+        }
+
+        function updateBrightness(value) {
+            document.getElementById('brightness-value').textContent = value + '%';
+            sendWebSocketCommand('set_brightness', parseInt(value));
+        }
+
+        function updateSpeed(value) {
+            document.getElementById('speed-value').textContent = value + '%';
+            sendWebSocketCommand('set_speed', parseInt(value));
+        }
+
+        function updateColor(hex) {
+            document.getElementById('color-value').textContent = hex.toUpperCase();
+            const rgb = hexToRgb(hex);
+            sendWebSocketCommand('set_color', [rgb.r, rgb.g, rgb.b]);
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function loadSystemStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    updateStatusDisplay(data);
+                })
+                .catch(error => {
+                    console.error('Error loading status:', error);
+                    showConnectionError();
+                });
+        }
+
+        function updateStatusDisplay(data) {
+            // Update status cards
+            document.getElementById('power-status').textContent = data.power ? 'ON' : 'OFF';
+            document.getElementById('current-mode').textContent = data.mode_name;
+            document.getElementById('current-mode').dataset.modeId = data.mode;
+            
+            // Update audio level
+            const audioLevel = Math.round((data.audio_level / 4095) * 100);
+            document.getElementById('audio-level').textContent = audioLevel + '%';
+            document.getElementById('audio-bar').style.width = audioLevel + '%';
+            
+            // Update WiFi status
+            document.getElementById('wifi-status').textContent = data.wifi_connected ? 'Connected' : 'Disconnected';
+            document.getElementById('wifi-ssid').textContent = data.wifi_ssid || 'Not connected';
+            
+            // Update system info
+            document.getElementById('ip-address').textContent = data.ip_address || 'N/A';
+            document.getElementById('uptime').textContent = formatUptime(data.uptime);
+            document.getElementById('free-memory').textContent = formatMemory(data.free_heap);
+            
+            // Update controls
+            document.getElementById('brightness-slider').value = data.brightness;
+            document.getElementById('brightness-value').textContent = data.brightness + '%';
+            document.getElementById('speed-slider').value = data.speed;
+            document.getElementById('speed-value').textContent = data.speed + '%';
+        }
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes} minutes`;
+        }
+
+        function formatMemory(bytes) {
+            if (bytes >= 1024 * 1024) {
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            } else if (bytes >= 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            }
+            return bytes + ' B';
+        }
+
+        function showConnectionError() {
+            const indicator = document.getElementById('connection-status');
+            indicator.className = 'connection-indicator error';
+            document.getElementById('connection-text').textContent = 'Connection Error';
+        }
+
+        // Update LED preview based on mode and settings
+        function updateLEDPreview(mode, brightness, color) {
+            const leds = document.querySelectorAll('.led-dot');
+            const opacity = brightness / 100;
+            
+            switch(mode) {
+                case 0: // Solid Color
+                    leds.forEach(led => {
+                        led.style.backgroundColor = color;
+                        led.style.opacity = opacity;
+                    });
+                    break;
+                case 2: // Rainbow Cycle
+                    leds.forEach((led, index) => {
+                        const hue = (index / leds.length) * 360;
+                        led.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+                        led.style.opacity = opacity;
+                    });
+                    break;
+                default:
+                    leds.forEach(led => {
+                        led.style.backgroundColor = '#333';
+                        led.style.opacity = 0.3;
+                    });
+            }
+        }
+
+        // Auto-refresh status every 5 seconds
+        setInterval(loadSystemStatus, 5000);
+    </script>
+</body>
+</html> 

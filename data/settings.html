@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚙️ Settings - LED Sign</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌈</text></svg>">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🌈 LED Sign Control</h1>
+        </div>
+        <div class="nav-menu">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/control.html" class="nav-link">Control</a>
+            <a href="/audio.html" class="nav-link">Audio</a>
+            <a href="/wifi.html" class="nav-link">WiFi</a>
+            <a href="/settings.html" class="nav-link active">Settings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Device Information -->
+        <div class="control-section">
+            <h2>📱 Device Information</h2>
+            <div class="device-info-grid">
+                <div class="info-card">
+                    <h4>Hardware</h4>
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span>Microcontroller:</span>
+                            <span>ESP32-C3</span>
+                        </div>
+                        <div class="info-item">
+                            <span>LED Count:</span>
+                            <span>100 WS2812B</span>
+                        </div>
+                        <div class="info-item">
+                            <span>Microphone:</span>
+                            <span>MAX4466</span>
+                        </div>
+                        <div class="info-item">
+                            <span>Flash Size:</span>
+                            <span id="flash-size">4MB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h4>Software</h4>
+                    <div class="info-list">
+                        <div class="info-item">
+                            <span>Firmware Version:</span>
+                            <span id="firmware-version">v1.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span>Build Date:</span>
+                            <span id="build-date">2024-01-15</span>
+                        </div>
+                        <div class="info-item">
+                            <span>Core Version:</span>
+                            <span id="core-version">ESP32 v2.0.5</span>
+                        </div>
+                        <div class="info-item">
+                            <span>Free Heap:</span>
+                            <span id="free-heap">256KB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- General Settings -->
+        <div class="control-section">
+            <h2>🔧 General Settings</h2>
+            <form id="general-settings-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="device-name" class="form-label">Device Name</label>
+                        <input type="text" id="device-name" class="form-control" value="LED-Sign" placeholder="Enter device name">
+                        <small class="help-text">Used for WiFi hostname and device identification</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="timezone" class="form-label">Time Zone</label>
+                        <select id="timezone" class="form-control">
+                            <option value="UTC-12">(UTC-12:00) International Date Line West</option>
+                            <option value="UTC-11">(UTC-11:00) Midway Island</option>
+                            <option value="UTC-10">(UTC-10:00) Hawaii</option>
+                            <option value="UTC-9">(UTC-09:00) Alaska</option>
+                            <option value="UTC-8">(UTC-08:00) Pacific Time</option>
+                            <option value="UTC-7">(UTC-07:00) Mountain Time</option>
+                            <option value="UTC-6">(UTC-06:00) Central Time</option>
+                            <option value="UTC-5" selected>(UTC-05:00) Eastern Time</option>
+                            <option value="UTC-4">(UTC-04:00) Atlantic Time</option>
+                            <option value="UTC">(UTC+00:00) Greenwich Mean Time</option>
+                            <option value="UTC+1">(UTC+01:00) Central European Time</option>
+                            <option value="UTC+8">(UTC+08:00) China Standard Time</option>
+                            <option value="UTC+9">(UTC+09:00) Japan Standard Time</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sleep-timer" class="form-label">Auto-Sleep Timer (minutes)</label>
+                        <input type="number" id="sleep-timer" class="form-control" value="0" min="0" max="1440" placeholder="0 = disabled">
+                        <small class="help-text">Automatically turn off LEDs after inactivity (0 to disable)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="wifi-timeout" class="form-label">WiFi Connection Timeout (seconds)</label>
+                        <input type="number" id="wifi-timeout" class="form-control" value="30" min="10" max="120">
+                        <small class="help-text">How long to wait when connecting to WiFi</small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Boot Behavior</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="boot-mode" value="last-state" checked>
+                            <span class="radio-text">Remember last state</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="boot-mode" value="always-on">
+                            <span class="radio-text">Always start powered on</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="boot-mode" value="always-off">
+                            <span class="radio-text">Always start powered off</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save General Settings</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetGeneralSettings()">Reset to Defaults</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Button Configuration -->
+        <div class="control-section">
+            <h2>🔘 Button Configuration</h2>
+            <div class="button-config">
+                <div class="button-group">
+                    <h4>Power Button</h4>
+                    <div class="form-group">
+                        <label for="power-short-press" class="form-label">Short Press Action</label>
+                        <select id="power-short-press" class="form-control">
+                            <option value="toggle-power" selected>Toggle Power</option>
+                            <option value="next-mode">Next Mode</option>
+                            <option value="brightness-up">Increase Brightness</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="power-long-press" class="form-label">Long Press Action (3s)</label>
+                        <select id="power-long-press" class="form-control">
+                            <option value="factory-reset" selected>Factory Reset</option>
+                            <option value="wifi-reset">Reset WiFi</option>
+                            <option value="config-mode">Enter Config Mode</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <h4>Mode Button</h4>
+                    <div class="form-group">
+                        <label for="mode-short-press" class="form-label">Short Press Action</label>
+                        <select id="mode-short-press" class="form-control">
+                            <option value="next-mode" selected>Next Mode</option>
+                            <option value="prev-mode">Previous Mode</option>
+                            <option value="toggle-power">Toggle Power</option>
+                            <option value="speed-up">Increase Speed</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mode-long-press" class="form-label">Long Press Action (2s)</label>
+                        <select id="mode-long-press" class="form-control">
+                            <option value="config-mode" selected>Enter Config Mode</option>
+                            <option value="brightness-toggle">Toggle Brightness</option>
+                            <option value="audio-mode">Audio Mode</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="button-actions">
+                    <button class="btn btn-primary" onclick="saveButtonConfig()">Save Button Config</button>
+                    <button class="btn btn-info" onclick="testButtons()">Test Buttons</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="control-section">
+            <h2>🔒 Security Settings</h2>
+            <div class="security-settings">
+                <div class="form-group">
+                    <label class="form-label">Web Interface Protection</label>
+                    <div class="toggle-container">
+                        <input type="checkbox" id="web-auth-enabled" class="toggle-switch">
+                        <label for="web-auth-enabled" class="toggle-label">
+                            <span class="toggle-text">Enable password protection for web interface</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="web-auth-config" class="auth-config" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="web-username" class="form-label">Username</label>
+                            <input type="text" id="web-username" class="form-control" placeholder="admin">
+                        </div>
+                        <div class="form-group">
+                            <label for="web-password" class="form-label">Password</label>
+                            <input type="password" id="web-password" class="form-control" placeholder="Enter password">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">API Access Control</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="require-api-key" checked>
+                            <span class="checkbox-text">Require API key for remote access</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rate-limiting" checked>
+                            <span class="checkbox-text">Enable rate limiting</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="security-actions">
+                    <button class="btn btn-primary" onclick="saveSecuritySettings()">Save Security Settings</button>
+                    <button class="btn btn-warning" onclick="generateAPIKey()">Generate New API Key</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Firmware Update -->
+        <div class="control-section">
+            <h2>🔄 Firmware Update</h2>
+            <div class="firmware-update">
+                <div class="current-firmware">
+                    <h4>Current Firmware</h4>
+                    <div class="firmware-info">
+                        <span class="version-badge">v1.0.0</span>
+                        <span class="build-info">Built: 2024-01-15</span>
+                    </div>
+                </div>
+
+                <div class="update-options">
+                    <div class="update-method">
+                        <h4>📁 Local File Update</h4>
+                        <p>Upload firmware file (.bin) from your computer</p>
+                        <div class="file-upload">
+                            <input type="file" id="firmware-file" accept=".bin" style="display: none;">
+                            <button class="btn btn-secondary" onclick="document.getElementById('firmware-file').click()">
+                                Choose Firmware File
+                            </button>
+                            <span id="file-name" class="file-name"></span>
+                        </div>
+                        <button class="btn btn-warning" onclick="uploadFirmware()" id="upload-btn" disabled>
+                            Upload & Install
+                        </button>
+                    </div>
+
+                    <div class="update-method">
+                        <h4>🌐 Online Update</h4>
+                        <p>Check for updates from the official repository</p>
+                        <button class="btn btn-info" onclick="checkForUpdates()">Check for Updates</button>
+                        <div id="update-status" class="update-status"></div>
+                    </div>
+                </div>
+
+                <div class="update-warnings">
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Warning:</strong> Do not power off the device during firmware update. 
+                        Interrupting the update process may require manual recovery.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup & Restore -->
+        <div class="control-section">
+            <h2>💾 Backup & Restore</h2>
+            <div class="backup-restore">
+                <div class="backup-section">
+                    <h4>📤 Export Configuration</h4>
+                    <p>Download all device settings as a backup file</p>
+                    <div class="backup-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="include-wifi" checked>
+                            <span class="checkbox-text">Include WiFi credentials</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="include-presets" checked>
+                            <span class="checkbox-text">Include custom presets</span>
+                        </label>
+                    </div>
+                    <button class="btn btn-success" onclick="exportConfig()">Export Configuration</button>
+                </div>
+
+                <div class="restore-section">
+                    <h4>📥 Import Configuration</h4>
+                    <p>Restore settings from a backup file</p>
+                    <div class="file-upload">
+                        <input type="file" id="config-file" accept=".json" style="display: none;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('config-file').click()">
+                            Choose Backup File
+                        </button>
+                        <span id="config-file-name" class="file-name"></span>
+                    </div>
+                    <button class="btn btn-primary" onclick="importConfig()" id="import-btn" disabled>
+                        Import Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Factory Reset -->
+        <div class="control-section">
+            <h2>🔄 Factory Reset</h2>
+            <div class="factory-reset">
+                <div class="reset-options">
+                    <div class="reset-option">
+                        <h4>🧹 Soft Reset</h4>
+                        <p>Reset all settings to defaults but keep WiFi credentials</p>
+                        <button class="btn btn-warning" onclick="softReset()">Soft Reset</button>
+                    </div>
+
+                    <div class="reset-option">
+                        <h4>💥 Full Factory Reset</h4>
+                        <p>Reset everything to factory defaults including WiFi credentials</p>
+                        <button class="btn btn-danger" onclick="factoryReset()">Factory Reset</button>
+                    </div>
+                </div>
+
+                <div class="reset-warnings">
+                    <div class="alert alert-danger">
+                        <strong>⚠️ Warning:</strong> Factory reset will erase all settings and require 
+                        you to reconfigure the device from scratch.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="control-section">
+            <h2>🔬 Advanced Settings</h2>
+            <div class="advanced-settings">
+                <details class="advanced-group">
+                    <summary>Debug & Logging</summary>
+                    <div class="advanced-content">
+                        <div class="form-group">
+                            <label for="log-level" class="form-label">Log Level</label>
+                            <select id="log-level" class="form-control">
+                                <option value="0">None</option>
+                                <option value="1">Error</option>
+                                <option value="2">Warning</option>
+                                <option value="3" selected>Info</option>
+                                <option value="4">Debug</option>
+                                <option value="5">Verbose</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Debug Features</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="serial-debug">
+                                    <span class="checkbox-text">Serial debug output</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="web-debug">
+                                    <span class="checkbox-text">Web debug console</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="advanced-group">
+                    <summary>Performance Tuning</summary>
+                    <div class="advanced-content">
+                        <div class="form-group">
+                            <label for="led-refresh-rate" class="form-label">LED Refresh Rate (Hz)</label>
+                            <input type="number" id="led-refresh-rate" class="form-control" value="60" min="30" max="120">
+                        </div>
+                        <div class="form-group">
+                            <label for="cpu-frequency" class="form-label">CPU Frequency</label>
+                            <select id="cpu-frequency" class="form-control">
+                                <option value="80">80 MHz (Power Save)</option>
+                                <option value="160" selected>160 MHz (Normal)</option>
+                                <option value="240">240 MHz (Performance)</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="advanced-group">
+                    <summary>Memory Management</summary>
+                    <div class="advanced-content">
+                        <div class="memory-stats">
+                            <div class="stat-item">
+                                <span>Heap Size:</span>
+                                <span id="heap-size">320KB</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Free Heap:</span>
+                                <span id="free-heap-adv">256KB</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Largest Block:</span>
+                                <span id="largest-block">128KB</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-info" onclick="forceGarbageCollection()">Force Garbage Collection</button>
+                    </div>
+                </details>
+
+                <div class="advanced-actions">
+                    <button class="btn btn-primary" onclick="saveAdvancedSettings()">Save Advanced Settings</button>
+                    <button class="btn btn-warning" onclick="resetAdvancedSettings()">Reset to Defaults</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-indicator">
+        <span id="connection-text">Connected</span>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize settings page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSettingsPage();
+            loadAllSettings();
+        });
+
+        function initializeSettingsPage() {
+            // File upload handlers
+            document.getElementById('firmware-file').addEventListener('change', handleFirmwareFile);
+            document.getElementById('config-file').addEventListener('change', handleConfigFile);
+            
+            // Web auth toggle
+            document.getElementById('web-auth-enabled').addEventListener('change', function() {
+                document.getElementById('web-auth-config').style.display = 
+                    this.checked ? 'block' : 'none';
+            });
+
+            // General settings form
+            document.getElementById('general-settings-form').addEventListener('submit', saveGeneralSettings);
+        }
+
+        function loadAllSettings() {
+            // Load device information
+            loadDeviceInfo();
+            
+            // Load settings from API
+            apiGet('config').then(data => {
+                loadGeneralSettings(data.system || {});
+                loadSecuritySettings(data.security || {});
+                loadAdvancedSettings(data.advanced || {});
+            }).catch(error => {
+                console.error('Failed to load settings:', error);
+                showNotification('Failed to load settings', 'error');
+            });
+        }
+
+        function loadDeviceInfo() {
+            apiGet('status').then(data => {
+                document.getElementById('free-heap').textContent = formatBytes(data.free_heap || 0);
+                document.getElementById('free-heap-adv').textContent = formatBytes(data.free_heap || 0);
+                // Other device info would be loaded from the device
+            });
+        }
+
+        function loadGeneralSettings(settings) {
+            if (settings.device_name) {
+                document.getElementById('device-name').value = settings.device_name;
+            }
+            if (settings.timezone) {
+                document.getElementById('timezone').value = settings.timezone;
+            }
+            if (settings.sleep_timer !== undefined) {
+                document.getElementById('sleep-timer').value = settings.sleep_timer;
+            }
+            if (settings.wifi_timeout !== undefined) {
+                document.getElementById('wifi-timeout').value = settings.wifi_timeout;
+            }
+        }
+
+        function saveGeneralSettings(event) {
+            if (event) event.preventDefault();
+            
+            const deviceName = document.getElementById('device-name').value;
+            const validation = validateDeviceName(deviceName);
+            if (!validation.valid) {
+                showNotification(validation.message, 'error');
+                return;
+            }
+
+            const settings = {
+                system: {
+                    device_name: deviceName,
+                    timezone: document.getElementById('timezone').value,
+                    sleep_timer: parseInt(document.getElementById('sleep-timer').value),
+                    wifi_timeout: parseInt(document.getElementById('wifi-timeout').value),
+                    boot_mode: document.querySelector('input[name="boot-mode"]:checked').value
+                }
+            };
+
+            apiPost('config', settings).then(() => {
+                showNotification('General settings saved successfully', 'success');
+            }).catch(error => {
+                showNotification('Failed to save general settings: ' + error.message, 'error');
+            });
+        }
+
+        function resetGeneralSettings() {
+            if (confirm('Reset all general settings to defaults?')) {
+                document.getElementById('device-name').value = 'LED-Sign';
+                document.getElementById('timezone').value = 'UTC-5';
+                document.getElementById('sleep-timer').value = 0;
+                document.getElementById('wifi-timeout').value = 30;
+                document.querySelector('input[value="last-state"]').checked = true;
+                
+                saveGeneralSettings();
+            }
+        }
+
+        function saveButtonConfig() {
+            const config = {
+                power_short: document.getElementById('power-short-press').value,
+                power_long: document.getElementById('power-long-press').value,
+                mode_short: document.getElementById('mode-short-press').value,
+                mode_long: document.getElementById('mode-long-press').value
+            };
+            
+            showNotification('Button configuration saved', 'success');
+            console.log('Button config:', config);
+        }
+
+        function testButtons() {
+            showNotification('Press any button to test configuration', 'info');
+            // This would enable a test mode on the device
+        }
+
+        function loadSecuritySettings(settings) {
+            if (settings.web_auth_enabled) {
+                document.getElementById('web-auth-enabled').checked = settings.web_auth_enabled;
+                document.getElementById('web-auth-config').style.display = 'block';
+            }
+        }
+
+        function saveSecuritySettings() {
+            const settings = {
+                web_auth_enabled: document.getElementById('web-auth-enabled').checked,
+                web_username: document.getElementById('web-username').value,
+                web_password: document.getElementById('web-password').value,
+                require_api_key: document.getElementById('require-api-key').checked,
+                rate_limiting: document.getElementById('rate-limiting').checked
+            };
+            
+            showNotification('Security settings saved', 'success');
+            console.log('Security settings:', settings);
+        }
+
+        function generateAPIKey() {
+            const apiKey = Array.from(crypto.getRandomValues(new Uint8Array(32)), 
+                b => b.toString(16).padStart(2, '0')).join('');
+            
+            showNotification(`New API Key: ${apiKey}`, 'success', 10000);
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(apiKey).then(() => {
+                showNotification('API key copied to clipboard', 'info');
+            });
+        }
+
+        function handleFirmwareFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('file-name').textContent = file.name;
+                document.getElementById('upload-btn').disabled = false;
+            }
+        }
+
+        function uploadFirmware() {
+            const file = document.getElementById('firmware-file').files[0];
+            if (!file) return;
+            
+            if (!confirm('Are you sure you want to update the firmware? This process cannot be interrupted.')) {
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+            
+            // Simulate firmware upload
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                uploadBtn.textContent = `Uploading... ${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    uploadBtn.textContent = 'Upload Complete!';
+                    showNotification('Firmware updated successfully. Device will restart.', 'success');
+                    
+                    setTimeout(() => {
+                        showNotification('Device restarting...', 'info');
+                    }, 2000);
+                }
+            }, 500);
+        }
+
+        function checkForUpdates() {
+            const statusDiv = document.getElementById('update-status');
+            statusDiv.innerHTML = '<div class="spinner"></div> Checking for updates...';
+            
+            setTimeout(() => {
+                statusDiv.innerHTML = `
+                    <div class="update-available">
+                        <strong>Update Available: v1.1.0</strong><br>
+                        <small>Released: 2024-01-20</small><br>
+                        <small>Changes: Bug fixes and new features</small><br>
+                        <button class="btn btn-success btn-sm" onclick="downloadUpdate()">Download & Install</button>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        function downloadUpdate() {
+            showNotification('Downloading update...', 'info');
+            // Implementation for downloading and installing update
+        }
+
+        function handleConfigFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('config-file-name').textContent = file.name;
+                document.getElementById('import-btn').disabled = false;
+            }
+        }
+
+        function exportConfig() {
+            const includeWifi = document.getElementById('include-wifi').checked;
+            const includePresets = document.getElementById('include-presets').checked;
+            
+            // Simulate config export
+            const config = {
+                version: '1.0',
+                exported: new Date().toISOString(),
+                settings: {
+                    general: {
+                        device_name: document.getElementById('device-name').value,
+                        timezone: document.getElementById('timezone').value
+                    }
+                }
+            };
+            
+            if (includeWifi) {
+                config.wifi = { ssid: 'example_network' };
+            }
+            
+            if (includePresets) {
+                config.presets = {};
+            }
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], 
+                { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `led-sign-config-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showNotification('Configuration exported successfully', 'success');
+        }
+
+        function importConfig() {
+            const file = document.getElementById('config-file').files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    
+                    if (confirm('Import this configuration? Current settings will be overwritten.')) {
+                        // Apply configuration
+                        if (config.settings && config.settings.general) {
+                            const general = config.settings.general;
+                            if (general.device_name) {
+                                document.getElementById('device-name').value = general.device_name;
+                            }
+                            if (general.timezone) {
+                                document.getElementById('timezone').value = general.timezone;
+                            }
+                        }
+                        
+                        showNotification('Configuration imported successfully', 'success');
+                    }
+                } catch (error) {
+                    showNotification('Invalid configuration file', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function softReset() {
+            if (confirm('Perform soft reset? This will reset all settings except WiFi credentials.')) {
+                showNotification('Performing soft reset...', 'info');
+                setTimeout(() => {
+                    showNotification('Soft reset complete', 'success');
+                    location.reload();
+                }, 2000);
+            }
+        }
+
+        function factoryReset() {
+            const confirmation = prompt('Type "FACTORY RESET" to confirm complete factory reset:');
+            if (confirmation === 'FACTORY RESET') {
+                showNotification('Performing factory reset...', 'warning');
+                
+                apiPost('reset').then(() => {
+                    showNotification('Factory reset initiated. Device will restart.', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000);
+                }).catch(error => {
+                    showNotification('Factory reset failed: ' + error.message, 'error');
+                });
+            } else if (confirmation !== null) {
+                showNotification('Factory reset cancelled - incorrect confirmation', 'error');
+            }
+        }
+
+        function loadAdvancedSettings(settings) {
+            if (settings.log_level !== undefined) {
+                document.getElementById('log-level').value = settings.log_level;
+            }
+        }
+
+        function saveAdvancedSettings() {
+            const settings = {
+                log_level: document.getElementById('log-level').value,
+                serial_debug: document.getElementById('serial-debug').checked,
+                web_debug: document.getElementById('web-debug').checked,
+                led_refresh_rate: document.getElementById('led-refresh-rate').value,
+                cpu_frequency: document.getElementById('cpu-frequency').value
+            };
+            
+            showNotification('Advanced settings saved', 'success');
+            console.log('Advanced settings:', settings);
+        }
+
+        function resetAdvancedSettings() {
+            if (confirm('Reset advanced settings to defaults?')) {
+                document.getElementById('log-level').value = '3';
+                document.getElementById('serial-debug').checked = false;
+                document.getElementById('web-debug').checked = false;
+                document.getElementById('led-refresh-rate').value = 60;
+                document.getElementById('cpu-frequency').value = '160';
+                
+                saveAdvancedSettings();
+            }
+        }
+
+        function forceGarbageCollection() {
+            showNotification('Garbage collection triggered', 'info');
+            // This would send a command to the device to force GC
+            setTimeout(() => {
+                loadDeviceInfo(); // Refresh memory stats
+            }, 1000);
+        }
+
+        // Add styles for settings page
+        const style = document.createElement('style');
+        style.textContent = `
+            .device-info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1rem;
+            }
+            
+            .info-card {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .info-card h4 {
+                margin: 0 0 1rem 0;
+                color: var(--text-light);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding-bottom: 0.5rem;
+            }
+            
+            .info-list .info-item {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            
+            .info-item:last-child {
+                border-bottom: none;
+            }
+            
+            .info-item span:first-child {
+                color: var(--text-muted);
+            }
+            
+            .info-item span:last-child {
+                color: var(--text-light);
+                font-weight: 600;
+            }
+            
+            .radio-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .radio-label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                cursor: pointer;
+            }
+            
+            .button-config {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 2rem;
+            }
+            
+            .button-group {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .button-group h4 {
+                margin: 0 0 1rem 0;
+                color: var(--text-light);
+            }
+            
+            .button-actions {
+                grid-column: 1 / -1;
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+                margin-top: 1rem;
+            }
+            
+            .security-settings {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .auth-config {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .security-actions {
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+                margin-top: 1rem;
+            }
+            
+            .firmware-update {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .current-firmware {
+                margin-bottom: 1.5rem;
+                text-align: center;
+            }
+            
+            .firmware-info {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 1rem;
+                margin-top: 0.5rem;
+            }
+            
+            .version-badge {
+                background: var(--primary-color);
+                color: white;
+                padding: 0.25rem 0.75rem;
+                border-radius: 1rem;
+                font-weight: 600;
+                font-size: 0.9rem;
+            }
+            
+            .build-info {
+                color: var(--text-muted);
+                font-size: 0.9rem;
+            }
+            
+            .update-options {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 2rem;
+                margin: 2rem 0;
+            }
+            
+            .update-method {
+                background: rgba(255, 255, 255, 0.03);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .file-upload {
+                margin: 1rem 0;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+            
+            .file-name {
+                color: var(--text-muted);
+                font-style: italic;
+            }
+            
+            .update-status {
+                margin-top: 1rem;
+                min-height: 20px;
+            }
+            
+            .update-available {
+                background: rgba(40, 167, 69, 0.2);
+                padding: 1rem;
+                border-radius: 8px;
+                border: 1px solid var(--success-color);
+            }
+            
+            .backup-restore {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 2rem;
+            }
+            
+            .backup-section, .restore-section {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .backup-options {
+                margin: 1rem 0;
+            }
+            
+            .factory-reset {
+                background: rgba(220, 53, 69, 0.1);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid var(--danger-color);
+            }
+            
+            .reset-options {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .reset-option {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1rem;
+                border-radius: 8px;
+                text-align: center;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .advanced-settings details {
+                margin-bottom: 1rem;
+            }
+            
+            .advanced-group summary {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1rem;
+                border-radius: 8px;
+                cursor: pointer;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                font-weight: 600;
+                color: var(--text-light);
+            }
+            
+            .advanced-content {
+                background: rgba(255, 255, 255, 0.03);
+                padding: 1rem;
+                border-radius: 0 0 8px 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-top: none;
+            }
+            
+            .memory-stats {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .advanced-actions {
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+                margin-top: 1rem;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

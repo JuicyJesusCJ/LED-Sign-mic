@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 LED Control - LED Sign</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌈</text></svg>">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🌈 LED Sign Control</h1>
+        </div>
+        <div class="nav-menu">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/control.html" class="nav-link active">Control</a>
+            <a href="/audio.html" class="nav-link">Audio</a>
+            <a href="/wifi.html" class="nav-link">WiFi</a>
+            <a href="/settings.html" class="nav-link">Settings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Mode Selection -->
+        <div class="control-section">
+            <h2>🎨 LED Patterns</h2>
+            <div class="mode-grid" id="mode-grid">
+                <!-- Modes will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Color Controls -->
+        <div class="control-section">
+            <h2>🎯 Color Controls</h2>
+            <div class="quick-controls">
+                <div class="control-group">
+                    <label for="primary-color">Primary Color</label>
+                    <div class="color-container">
+                        <input type="color" id="primary-color" value="#ff0000" class="color-picker">
+                        <span id="primary-color-value" class="color-value">#FF0000</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Quick Colors</label>
+                    <div class="quick-colors">
+                        <button class="color-btn" data-color="#ff0000" style="background: #ff0000;" title="Red"></button>
+                        <button class="color-btn" data-color="#ff7f00" style="background: #ff7f00;" title="Orange"></button>
+                        <button class="color-btn" data-color="#ffff00" style="background: #ffff00;" title="Yellow"></button>
+                        <button class="color-btn" data-color="#00ff00" style="background: #00ff00;" title="Green"></button>
+                        <button class="color-btn" data-color="#0000ff" style="background: #0000ff;" title="Blue"></button>
+                        <button class="color-btn" data-color="#4b0082" style="background: #4b0082;" title="Indigo"></button>
+                        <button class="color-btn" data-color="#9400d3" style="background: #9400d3;" title="Violet"></button>
+                        <button class="color-btn" data-color="#ffffff" style="background: #ffffff;" title="White"></button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>HSV Color Picker</label>
+                    <div class="hsv-controls">
+                        <div class="hsv-slider">
+                            <label>Hue</label>
+                            <input type="range" id="hue-slider" min="0" max="360" value="0" class="slider hue-slider">
+                            <span id="hue-value">0°</span>
+                        </div>
+                        <div class="hsv-slider">
+                            <label>Saturation</label>
+                            <input type="range" id="saturation-slider" min="0" max="100" value="100" class="slider">
+                            <span id="saturation-value">100%</span>
+                        </div>
+                        <div class="hsv-slider">
+                            <label>Value</label>
+                            <input type="range" id="value-slider" min="0" max="100" value="100" class="slider">
+                            <span id="value-value">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animation Controls -->
+        <div class="control-section">
+            <h2>⚡ Animation Controls</h2>
+            <div class="quick-controls">
+                <div class="control-group">
+                    <label for="brightness-control">Brightness</label>
+                    <div class="slider-container">
+                        <input type="range" id="brightness-control" min="0" max="100" value="80" class="slider">
+                        <span id="brightness-control-value" class="slider-value">80%</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="speed-control">Animation Speed</label>
+                    <div class="slider-container">
+                        <input type="range" id="speed-control" min="0" max="100" value="50" class="slider">
+                        <span id="speed-control-value" class="slider-value">50%</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="direction-control">Direction</label>
+                    <select id="direction-control" class="form-control">
+                        <option value="forward">Forward</option>
+                        <option value="reverse">Reverse</option>
+                        <option value="ping-pong">Ping-Pong</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pattern Presets -->
+        <div class="control-section">
+            <h2>💾 Pattern Presets</h2>
+            <div class="preset-controls">
+                <div class="preset-grid">
+                    <div class="preset-card" data-preset="party">
+                        <div class="preset-icon">🎉</div>
+                        <h4>Party Mode</h4>
+                        <p>Fast rainbow cycling with high brightness</p>
+                        <button class="btn btn-primary" onclick="loadPreset('party')">Load</button>
+                    </div>
+
+                    <div class="preset-card" data-preset="relax">
+                        <div class="preset-icon">😌</div>
+                        <h4>Relax Mode</h4>
+                        <p>Slow breathing in warm colors</p>
+                        <button class="btn btn-primary" onclick="loadPreset('relax')">Load</button>
+                    </div>
+
+                    <div class="preset-card" data-preset="focus">
+                        <div class="preset-icon">🎯</div>
+                        <h4>Focus Mode</h4>
+                        <p>Steady blue light for concentration</p>
+                        <button class="btn btn-primary" onclick="loadPreset('focus')">Load</button>
+                    </div>
+
+                    <div class="preset-card" data-preset="sleep">
+                        <div class="preset-icon">🌙</div>
+                        <h4>Sleep Mode</h4>
+                        <p>Dim warm colors, gradually fading</p>
+                        <button class="btn btn-primary" onclick="loadPreset('sleep')">Load</button>
+                    </div>
+                </div>
+
+                <div class="preset-actions">
+                    <button class="btn btn-secondary" onclick="saveCurrentAsPreset()">Save Current Settings</button>
+                    <button class="btn btn-warning" onclick="resetToDefaults()">Reset to Defaults</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="control-section">
+            <h2>👁️ Live Preview</h2>
+            <div class="preview-container">
+                <div class="led-strip-preview">
+                    <div class="led-container" id="control-led-preview">
+                        <!-- LED dots will be generated by JavaScript -->
+                    </div>
+                </div>
+                <div class="preview-info">
+                    <div class="info-item">
+                        <span class="info-label">Current Mode:</span>
+                        <span id="preview-mode" class="info-value">Rainbow Cycle</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">FPS:</span>
+                        <span id="preview-fps" class="info-value">60</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Power Usage:</span>
+                        <span id="preview-power" class="info-value">~2.5A</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-indicator">
+        <span id="connection-text">Connected</span>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Mode definitions with icons and descriptions
+        const modes = [
+            { id: 0, name: "Solid Color", icon: "🎨", description: "Single color across all LEDs" },
+            { id: 1, name: "Rainbow Static", icon: "🌈", description: "Static rainbow pattern" },
+            { id: 2, name: "Rainbow Cycle", icon: "🔄", description: "Moving rainbow effect" },
+            { id: 3, name: "Color Wipe", icon: "🖌️", description: "Sequential LED activation" },
+            { id: 4, name: "Theater Chase", icon: "🎭", description: "Moving dot patterns" },
+            { id: 5, name: "Breathing", icon: "💨", description: "Fade in/out effects" },
+            { id: 6, name: "Fire Effect", icon: "🔥", description: "Simulated fire animation" },
+            { id: 7, name: "VU Meter", icon: "📊", description: "Volume-based bar graph" },
+            { id: 8, name: "Spectrum Analyzer", icon: "📈", description: "Frequency-based visualization" },
+            { id: 9, name: "Beat Flash", icon: "⚡", description: "Flash on detected beats" },
+            { id: 10, name: "Sound Colors", icon: "🎵", description: "Color change based on frequency" },
+            { id: 11, name: "Audio Ripple", icon: "〰️", description: "Wave-like effects from center" }
+        ];
+
+        let currentMode = 0;
+        let previewAnimation = null;
+
+        // Initialize control page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeControlPage();
+            loadCurrentSettings();
+            startPreviewAnimation();
+        });
+
+        function initializeControlPage() {
+            // Generate mode grid
+            const modeGrid = document.getElementById('mode-grid');
+            modes.forEach(mode => {
+                const modeCard = document.createElement('div');
+                modeCard.className = 'mode-card';
+                modeCard.dataset.modeId = mode.id;
+                modeCard.innerHTML = `
+                    <div class="mode-icon">${mode.icon}</div>
+                    <div class="mode-name">${mode.name}</div>
+                    <div class="mode-description">${mode.description}</div>
+                `;
+                modeCard.addEventListener('click', () => selectMode(mode.id));
+                modeGrid.appendChild(modeCard);
+            });
+
+            // Generate LED preview dots
+            const ledContainer = document.getElementById('control-led-preview');
+            for (let i = 0; i < 100; i++) {
+                const led = document.createElement('div');
+                led.className = 'led-dot';
+                led.id = `control-led-${i}`;
+                ledContainer.appendChild(led);
+            }
+
+            // Initialize event listeners
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            // Color picker
+            document.getElementById('primary-color').addEventListener('change', function() {
+                updatePrimaryColor(this.value);
+            });
+
+            // Quick color buttons
+            document.querySelectorAll('.color-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const color = this.dataset.color;
+                    document.getElementById('primary-color').value = color;
+                    updatePrimaryColor(color);
+                });
+            });
+
+            // HSV sliders
+            document.getElementById('hue-slider').addEventListener('input', updateFromHSV);
+            document.getElementById('saturation-slider').addEventListener('input', updateFromHSV);
+            document.getElementById('value-slider').addEventListener('input', updateFromHSV);
+
+            // Animation controls
+            document.getElementById('brightness-control').addEventListener('input', function() {
+                updateBrightness(this.value);
+            });
+
+            document.getElementById('speed-control').addEventListener('input', function() {
+                updateSpeed(this.value);
+            });
+
+            document.getElementById('direction-control').addEventListener('change', function() {
+                updateDirection(this.value);
+            });
+        }
+
+        function selectMode(modeId) {
+            currentMode = modeId;
+            
+            // Update UI
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelector(`[data-mode-id="${modeId}"]`).classList.add('active');
+            
+            // Update preview info
+            const mode = modes.find(m => m.id === modeId);
+            document.getElementById('preview-mode').textContent = mode.name;
+            
+            // Send command to device
+            sendWebSocketCommand('set_mode', modeId);
+            
+            showNotification(`Mode changed to ${mode.name}`, 'success');
+        }
+
+        function updatePrimaryColor(hex) {
+            document.getElementById('primary-color-value').textContent = hex.toUpperCase();
+            
+            // Update HSV sliders
+            const rgb = hexToRgb(hex);
+            if (rgb) {
+                const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+                document.getElementById('hue-slider').value = hsv.h;
+                document.getElementById('saturation-slider').value = hsv.s;
+                document.getElementById('value-slider').value = hsv.v;
+                document.getElementById('hue-value').textContent = Math.round(hsv.h) + '°';
+                document.getElementById('saturation-value').textContent = Math.round(hsv.s) + '%';
+                document.getElementById('value-value').textContent = Math.round(hsv.v) + '%';
+                
+                // Send to device
+                sendWebSocketCommand('set_color', [rgb.r, rgb.g, rgb.b]);
+            }
+        }
+
+        function updateFromHSV() {
+            const h = parseInt(document.getElementById('hue-slider').value);
+            const s = parseInt(document.getElementById('saturation-slider').value);
+            const v = parseInt(document.getElementById('value-slider').value);
+            
+            // Update value displays
+            document.getElementById('hue-value').textContent = h + '°';
+            document.getElementById('saturation-value').textContent = s + '%';
+            document.getElementById('value-value').textContent = v + '%';
+            
+            // Convert to RGB and update color picker
+            const rgb = hslToRgb(h, s, v);
+            const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+            document.getElementById('primary-color').value = hex;
+            document.getElementById('primary-color-value').textContent = hex.toUpperCase();
+            
+            // Send to device
+            sendWebSocketCommand('set_color', [rgb.r, rgb.g, rgb.b]);
+        }
+
+        function updateBrightness(value) {
+            document.getElementById('brightness-control-value').textContent = value + '%';
+            sendWebSocketCommand('set_brightness', parseInt(value));
+            updatePowerEstimate();
+        }
+
+        function updateSpeed(value) {
+            document.getElementById('speed-control-value').textContent = value + '%';
+            sendWebSocketCommand('set_speed', parseInt(value));
+        }
+
+        function updateDirection(value) {
+            // This would be implemented as a custom setting
+            showNotification(`Direction set to ${value}`, 'info');
+        }
+
+        function loadPreset(presetName) {
+            const presets = {
+                party: { mode: 2, brightness: 100, speed: 80, color: '#ff0000' },
+                relax: { mode: 5, brightness: 30, speed: 20, color: '#ff8c00' },
+                focus: { mode: 0, brightness: 70, speed: 0, color: '#0080ff' },
+                sleep: { mode: 5, brightness: 10, speed: 10, color: '#ff4000' }
+            };
+            
+            const preset = presets[presetName];
+            if (preset) {
+                selectMode(preset.mode);
+                document.getElementById('brightness-control').value = preset.brightness;
+                updateBrightness(preset.brightness);
+                document.getElementById('speed-control').value = preset.speed;
+                updateSpeed(preset.speed);
+                document.getElementById('primary-color').value = preset.color;
+                updatePrimaryColor(preset.color);
+                
+                showNotification(`Loaded ${presetName} preset`, 'success');
+            }
+        }
+
+        function saveCurrentAsPreset() {
+            const presetName = prompt('Enter preset name:');
+            if (presetName) {
+                const settings = {
+                    mode: currentMode,
+                    brightness: document.getElementById('brightness-control').value,
+                    speed: document.getElementById('speed-control').value,
+                    color: document.getElementById('primary-color').value
+                };
+                
+                saveToLocalStorage(`preset_${presetName}`, settings);
+                showNotification(`Preset "${presetName}" saved`, 'success');
+            }
+        }
+
+        function resetToDefaults() {
+            if (confirm('Reset all settings to defaults?')) {
+                selectMode(2); // Rainbow Cycle
+                document.getElementById('brightness-control').value = 80;
+                updateBrightness(80);
+                document.getElementById('speed-control').value = 50;
+                updateSpeed(50);
+                document.getElementById('primary-color').value = '#ff0000';
+                updatePrimaryColor('#ff0000');
+                
+                showNotification('Settings reset to defaults', 'info');
+            }
+        }
+
+        function loadCurrentSettings() {
+            apiGet('status').then(data => {
+                // Update mode selection
+                if (data.mode !== undefined) {
+                    selectMode(data.mode);
+                }
+                
+                // Update controls
+                if (data.brightness !== undefined) {
+                    document.getElementById('brightness-control').value = data.brightness;
+                    document.getElementById('brightness-control-value').textContent = data.brightness + '%';
+                }
+                
+                if (data.speed !== undefined) {
+                    document.getElementById('speed-control').value = data.speed;
+                    document.getElementById('speed-control-value').textContent = data.speed + '%';
+                }
+            }).catch(error => {
+                console.error('Failed to load current settings:', error);
+            });
+        }
+
+        function updatePowerEstimate() {
+            const brightness = parseInt(document.getElementById('brightness-control').value);
+            const estimate = (brightness / 100 * 6).toFixed(1); // Max 6A at 100%
+            document.getElementById('preview-power').textContent = `~${estimate}A`;
+        }
+
+        function startPreviewAnimation() {
+            // Simple preview animation
+            let frame = 0;
+            previewAnimation = setInterval(() => {
+                if (currentMode === 2) { // Rainbow cycle
+                    const leds = document.querySelectorAll('#control-led-preview .led-dot');
+                    leds.forEach((led, index) => {
+                        const hue = (frame + index * 3.6) % 360;
+                        led.style.backgroundColor = `hsl(${hue}, 100%, 50%)`;
+                        led.style.opacity = '0.8';
+                    });
+                    frame = (frame + 2) % 360;
+                }
+                
+                // Update FPS display (simulated)
+                document.getElementById('preview-fps').textContent = '60';
+            }, 33); // ~30 FPS for preview
+        }
+
+        // RGB to HSV conversion
+        function rgbToHsv(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            const diff = max - min;
+            
+            let h = 0;
+            if (diff !== 0) {
+                if (max === r) h = ((g - b) / diff) % 6;
+                else if (max === g) h = (b - r) / diff + 2;
+                else h = (r - g) / diff + 4;
+            }
+            h = Math.round(h * 60);
+            if (h < 0) h += 360;
+            
+            const s = max === 0 ? 0 : Math.round((diff / max) * 100);
+            const v = Math.round(max * 100);
+            
+            return { h, s, v };
+        }
+
+        // Handle status updates from WebSocket
+        function updateStatusDisplay(data) {
+            if (data.mode !== undefined && data.mode !== currentMode) {
+                selectMode(data.mode);
+            }
+            
+            if (data.brightness !== undefined) {
+                document.getElementById('brightness-control').value = data.brightness;
+                document.getElementById('brightness-control-value').textContent = data.brightness + '%';
+                updatePowerEstimate();
+            }
+            
+            if (data.speed !== undefined) {
+                document.getElementById('speed-control').value = data.speed;
+                document.getElementById('speed-control-value').textContent = data.speed + '%';
+            }
+        }
+
+        // Add styles for new elements
+        const style = document.createElement('style');
+        style.textContent = `
+            .quick-colors {
+                display: flex;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            
+            .color-btn {
+                width: 40px;
+                height: 40px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            
+            .color-btn:hover {
+                transform: scale(1.1);
+                border-color: white;
+            }
+            
+            .hsv-controls {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .hsv-slider {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .hsv-slider label {
+                min-width: 80px;
+                margin: 0;
+            }
+            
+            .hue-slider {
+                background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+            }
+            
+            .preset-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .preset-card {
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                padding: 1rem;
+                text-align: center;
+                transition: all 0.3s ease;
+            }
+            
+            .preset-card:hover {
+                background: rgba(255, 255, 255, 0.1);
+                border-color: var(--primary-color);
+            }
+            
+            .preset-icon {
+                font-size: 2rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .preset-card h4 {
+                margin: 0.5rem 0;
+                color: var(--text-light);
+            }
+            
+            .preset-card p {
+                color: var(--text-muted);
+                font-size: 0.9rem;
+                margin-bottom: 1rem;
+            }
+            
+            .preset-actions {
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .preview-container {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .preview-info {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+            
+            .mode-description {
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                margin-top: 0.5rem;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 

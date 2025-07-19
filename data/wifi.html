@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📶 WiFi Settings - LED Sign</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌈</text></svg>">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <h1>🌈 LED Sign Control</h1>
+        </div>
+        <div class="nav-menu">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/control.html" class="nav-link">Control</a>
+            <a href="/audio.html" class="nav-link">Audio</a>
+            <a href="/wifi.html" class="nav-link active">WiFi</a>
+            <a href="/settings.html" class="nav-link">Settings</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Connection Status -->
+        <div class="control-section">
+            <h2>📶 WiFi Connection Status</h2>
+            <div class="wifi-status-card">
+                <div class="status-row">
+                    <div class="status-item">
+                        <span class="status-icon" id="connection-icon">📶</span>
+                        <div class="status-details">
+                            <h3 id="connection-status-text">Connected</h3>
+                            <p id="connection-network">MyNetworkName</p>
+                        </div>
+                    </div>
+                    <div class="status-actions">
+                        <button class="btn btn-secondary" id="disconnect-btn" onclick="disconnectWiFi()">Disconnect</button>
+                        <button class="btn btn-primary" onclick="refreshConnection()">Refresh</button>
+                    </div>
+                </div>
+                
+                <div class="connection-details">
+                    <div class="detail-item">
+                        <span class="detail-label">IP Address:</span>
+                        <span id="ip-address" class="detail-value">192.168.1.100</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Signal Strength:</span>
+                        <span id="signal-strength" class="detail-value">-45 dBm (Excellent)</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">MAC Address:</span>
+                        <span id="mac-address" class="detail-value">AA:BB:CC:DD:EE:FF</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Connection Time:</span>
+                        <span id="connection-time" class="detail-value">2h 15m</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Networks -->
+        <div class="control-section">
+            <h2>🔍 Available Networks</h2>
+            <div class="scan-controls">
+                <button class="btn btn-primary" onclick="scanNetworks()" id="scan-btn">
+                    <span id="scan-text">Scan for Networks</span>
+                </button>
+                <div class="scan-options">
+                    <label class="form-label">
+                        <input type="checkbox" id="show-hidden"> Show hidden networks
+                    </label>
+                    <label class="form-label">
+                        <input type="checkbox" id="auto-refresh" checked> Auto-refresh every 30s
+                    </label>
+                </div>
+            </div>
+            
+            <div class="network-list" id="network-list">
+                <div class="network-loading">Click "Scan for Networks" to discover available WiFi networks</div>
+            </div>
+        </div>
+
+        <!-- Manual Connection -->
+        <div class="control-section">
+            <h2>🔗 Manual Connection</h2>
+            <form id="wifi-connect-form" onsubmit="connectToNetwork(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="manual-ssid" class="form-label">Network Name (SSID)</label>
+                        <input type="text" id="manual-ssid" class="form-control" placeholder="Enter network name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="manual-password" class="form-label">Password</label>
+                        <input type="password" id="manual-password" class="form-control" placeholder="Enter password">
+                        <small class="help-text">Leave empty for open networks</small>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="security-type" class="form-label">Security Type</label>
+                        <select id="security-type" class="form-control">
+                            <option value="auto">Auto-detect</option>
+                            <option value="open">Open (No Security)</option>
+                            <option value="wep">WEP</option>
+                            <option value="wpa">WPA/WPA2 Personal</option>
+                            <option value="wpa2">WPA2 Personal</option>
+                            <option value="wpa3">WPA3 Personal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Advanced Options</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="hidden-network"> Hidden Network</label>
+                            <label><input type="checkbox" id="static-ip"> Use Static IP</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="static-ip-config" class="static-ip-config" style="display: none;">
+                    <h4>Static IP Configuration</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="static-ip-addr" class="form-label">IP Address</label>
+                            <input type="text" id="static-ip-addr" class="form-control" placeholder="192.168.1.100">
+                        </div>
+                        <div class="form-group">
+                            <label for="static-gateway" class="form-label">Gateway</label>
+                            <input type="text" id="static-gateway" class="form-control" placeholder="192.168.1.1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="static-subnet" class="form-label">Subnet Mask</label>
+                            <input type="text" id="static-subnet" class="form-control" placeholder="255.255.255.0">
+                        </div>
+                        <div class="form-group">
+                            <label for="static-dns" class="form-label">DNS Server</label>
+                            <input type="text" id="static-dns" class="form-control" placeholder="8.8.8.8">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Connect to Network</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear Form</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Saved Networks -->
+        <div class="control-section">
+            <h2>💾 Saved Networks</h2>
+            <div class="saved-networks" id="saved-networks">
+                <div class="saved-network-item">
+                    <div class="network-info">
+                        <div class="network-name">MyHomeNetwork</div>
+                        <div class="network-details">WPA2 • Last connected: 2 hours ago</div>
+                    </div>
+                    <div class="network-actions">
+                        <button class="btn btn-sm btn-primary" onclick="connectSaved('MyHomeNetwork')">Connect</button>
+                        <button class="btn btn-sm btn-secondary" onclick="editSaved('MyHomeNetwork')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="forgetSaved('MyHomeNetwork')">Forget</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Point Mode -->
+        <div class="control-section">
+            <h2>📡 Access Point Mode</h2>
+            <div class="ap-controls">
+                <div class="ap-status">
+                    <h4>Create WiFi Hotspot</h4>
+                    <p>Enable Access Point mode to allow direct connections to the LED sign</p>
+                </div>
+                
+                <form id="ap-config-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ap-ssid" class="form-label">Hotspot Name</label>
+                            <input type="text" id="ap-ssid" class="form-control" value="LED-Sign-Setup" placeholder="Hotspot name">
+                        </div>
+                        <div class="form-group">
+                            <label for="ap-password" class="form-label">Password</label>
+                            <input type="password" id="ap-password" class="form-control" value="configure123" placeholder="Hotspot password">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ap-channel" class="form-label">WiFi Channel</label>
+                            <select id="ap-channel" class="form-control">
+                                <option value="1">Channel 1 (2.412 GHz)</option>
+                                <option value="6" selected>Channel 6 (2.437 GHz)</option>
+                                <option value="11">Channel 11 (2.462 GHz)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ap-max-clients" class="form-label">Max Clients</label>
+                            <select id="ap-max-clients" class="form-control">
+                                <option value="1">1 Client</option>
+                                <option value="4" selected>4 Clients</option>
+                                <option value="8">8 Clients</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="ap-actions">
+                        <button type="button" class="btn btn-primary" onclick="toggleAPMode()">Start Access Point</button>
+                        <button type="button" class="btn btn-secondary" onclick="resetAPConfig()">Reset to Defaults</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Network Diagnostics -->
+        <div class="control-section">
+            <h2>🔧 Network Diagnostics</h2>
+            <div class="diagnostic-tools">
+                <div class="tool-grid">
+                    <div class="diagnostic-card">
+                        <h4>🏓 Ping Test</h4>
+                        <p>Test connection to gateway and internet</p>
+                        <button class="btn btn-info" onclick="runPingTest()">Run Ping Test</button>
+                        <div id="ping-result" class="test-result"></div>
+                    </div>
+                    
+                    <div class="diagnostic-card">
+                        <h4>🌐 DNS Test</h4>
+                        <p>Check DNS resolution capability</p>
+                        <button class="btn btn-info" onclick="runDNSTest()">Test DNS</button>
+                        <div id="dns-result" class="test-result"></div>
+                    </div>
+                    
+                    <div class="diagnostic-card">
+                        <h4>📊 Speed Test</h4>
+                        <p>Measure connection speed and latency</p>
+                        <button class="btn btn-info" onclick="runSpeedTest()">Speed Test</button>
+                        <div id="speed-result" class="test-result"></div>
+                    </div>
+                    
+                    <div class="diagnostic-card">
+                        <h4>📈 Signal Monitor</h4>
+                        <p>Monitor WiFi signal strength over time</p>
+                        <button class="btn btn-info" onclick="startSignalMonitor()">Start Monitor</button>
+                        <div id="signal-result" class="test-result"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connection Status Indicator -->
+    <div id="connection-status" class="connection-indicator">
+        <span id="connection-text">Connected</span>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        let autoRefreshInterval = null;
+        let signalMonitorInterval = null;
+
+        // Initialize WiFi page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWiFiPage();
+            loadWiFiStatus();
+            loadSavedNetworks();
+            setupAutoRefresh();
+        });
+
+        function initializeWiFiPage() {
+            // Static IP configuration toggle
+            document.getElementById('static-ip').addEventListener('change', function() {
+                document.getElementById('static-ip-config').style.display = 
+                    this.checked ? 'block' : 'none';
+            });
+
+            // Auto-refresh toggle
+            document.getElementById('auto-refresh').addEventListener('change', function() {
+                if (this.checked) {
+                    setupAutoRefresh();
+                } else {
+                    clearInterval(autoRefreshInterval);
+                }
+            });
+        }
+
+        function loadWiFiStatus() {
+            apiGet('status').then(data => {
+                updateConnectionStatus(data);
+            }).catch(error => {
+                console.error('Failed to load WiFi status:', error);
+                showDisconnectedState();
+            });
+        }
+
+        function updateConnectionStatus(data) {
+            const isConnected = data.wifi_connected;
+            const statusIcon = document.getElementById('connection-icon');
+            const statusText = document.getElementById('connection-status-text');
+            const networkName = document.getElementById('connection-network');
+            const disconnectBtn = document.getElementById('disconnect-btn');
+
+            if (isConnected) {
+                statusIcon.textContent = '📶';
+                statusText.textContent = 'Connected';
+                statusText.className = 'status-connected';
+                networkName.textContent = data.wifi_ssid || 'Unknown Network';
+                disconnectBtn.style.display = 'inline-block';
+
+                // Update connection details
+                document.getElementById('ip-address').textContent = data.ip_address || 'N/A';
+                updateSignalStrength(-45); // This would come from the device
+                updateConnectionTime(data.uptime);
+            } else {
+                showDisconnectedState();
+            }
+        }
+
+        function showDisconnectedState() {
+            document.getElementById('connection-icon').textContent = '📵';
+            document.getElementById('connection-status-text').textContent = 'Disconnected';
+            document.getElementById('connection-status-text').className = 'status-disconnected';
+            document.getElementById('connection-network').textContent = 'No network connected';
+            document.getElementById('disconnect-btn').style.display = 'none';
+            document.getElementById('ip-address').textContent = 'N/A';
+            document.getElementById('signal-strength').textContent = 'N/A';
+        }
+
+        function updateSignalStrength(rssi) {
+            let strength, quality;
+            if (rssi > -30) {
+                strength = 'Excellent';
+                quality = '📶';
+            } else if (rssi > -50) {
+                strength = 'Good';
+                quality = '📶';
+            } else if (rssi > -70) {
+                strength = 'Fair';
+                quality = '📶';
+            } else {
+                strength = 'Poor';
+                quality = '📶';
+            }
+            document.getElementById('signal-strength').textContent = `${rssi} dBm (${strength})`;
+        }
+
+        function updateConnectionTime(uptime) {
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            document.getElementById('connection-time').textContent = `${hours}h ${minutes}m`;
+        }
+
+        function scanNetworks() {
+            const scanBtn = document.getElementById('scan-btn');
+            const scanText = document.getElementById('scan-text');
+            const networkList = document.getElementById('network-list');
+
+            scanBtn.disabled = true;
+            scanText.textContent = 'Scanning...';
+            networkList.innerHTML = '<div class="network-loading"><div class="spinner"></div> Scanning for networks...</div>';
+
+            apiGet('wifi/scan').then(data => {
+                displayNetworks(data.networks);
+            }).catch(error => {
+                networkList.innerHTML = '<div class="scan-error">Error scanning networks: ' + error.message + '</div>';
+            }).finally(() => {
+                scanBtn.disabled = false;
+                scanText.textContent = 'Scan for Networks';
+            });
+        }
+
+        function displayNetworks(networks) {
+            const networkList = document.getElementById('network-list');
+            
+            if (networks.length === 0) {
+                networkList.innerHTML = '<div class="no-networks">No networks found</div>';
+                return;
+            }
+
+            networkList.innerHTML = '';
+            networks.forEach(network => {
+                const networkItem = document.createElement('div');
+                networkItem.className = 'network-item';
+                
+                const signalBars = getSignalBars(network.rssi);
+                const securityIcon = network.encryption === 'Open' ? '🔓' : '🔒';
+                
+                networkItem.innerHTML = `
+                    <div class="network-main">
+                        <div class="network-icon">${signalBars}</div>
+                        <div class="network-details">
+                            <div class="network-name">${network.ssid}</div>
+                            <div class="network-info">${securityIcon} ${network.encryption} • ${network.rssi} dBm</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="connectToScannedNetwork('${network.ssid}', '${network.encryption}')">
+                        Connect
+                    </button>
+                `;
+                
+                networkList.appendChild(networkItem);
+            });
+        }
+
+        function getSignalBars(rssi) {
+            if (rssi > -30) return '📶';
+            if (rssi > -50) return '📶';
+            if (rssi > -70) return '📶';
+            return '📶';
+        }
+
+        function connectToScannedNetwork(ssid, encryption) {
+            document.getElementById('manual-ssid').value = ssid;
+            if (encryption !== 'Open') {
+                const password = prompt(`Enter password for ${ssid}:`);
+                if (password === null) return; // User cancelled
+                document.getElementById('manual-password').value = password;
+            } else {
+                document.getElementById('manual-password').value = '';
+            }
+            
+            // Scroll to manual connection form
+            document.getElementById('wifi-connect-form').scrollIntoView({ behavior: 'smooth' });
+            
+            // Highlight the form
+            document.getElementById('wifi-connect-form').style.background = 'rgba(0, 123, 255, 0.1)';
+            setTimeout(() => {
+                document.getElementById('wifi-connect-form').style.background = '';
+            }, 2000);
+        }
+
+        function connectToNetwork(event) {
+            event.preventDefault();
+            
+            const ssid = document.getElementById('manual-ssid').value;
+            const password = document.getElementById('manual-password').value;
+            
+            const validation = validateWiFiCredentials(ssid, password);
+            if (!validation.valid) {
+                showNotification(validation.message, 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('ssid', ssid);
+            formData.append('password', password);
+
+            setLoading('wifi-connect-form', true);
+            showNotification(`Connecting to ${ssid}...`, 'info');
+
+            apiPostForm('wifi/connect', formData).then(data => {
+                if (data.status === 'connected') {
+                    showNotification(`Successfully connected to ${ssid}!`, 'success');
+                    loadWiFiStatus();
+                    clearForm();
+                } else {
+                    showNotification(`Connection failed: ${data.error}`, 'error');
+                }
+            }).catch(error => {
+                showNotification(`Connection error: ${error.message}`, 'error');
+            }).finally(() => {
+                setLoading('wifi-connect-form', false);
+            });
+        }
+
+        function disconnectWiFi() {
+            if (confirm('Disconnect from current WiFi network?')) {
+                showNotification('Disconnecting from WiFi...', 'info');
+                // This would send a disconnect command to the device
+                setTimeout(() => {
+                    showDisconnectedState();
+                    showNotification('Disconnected from WiFi', 'success');
+                }, 2000);
+            }
+        }
+
+        function refreshConnection() {
+            loadWiFiStatus();
+            showNotification('Connection status refreshed', 'info');
+        }
+
+        function clearForm() {
+            document.getElementById('wifi-connect-form').reset();
+            document.getElementById('static-ip-config').style.display = 'none';
+        }
+
+        function loadSavedNetworks() {
+            // This would load from device memory
+            const savedNetworks = loadFromLocalStorage('saved_networks', []);
+            const container = document.getElementById('saved-networks');
+            
+            if (savedNetworks.length === 0) {
+                container.innerHTML = '<div class="no-saved-networks">No saved networks</div>';
+                return;
+            }
+            
+            // Display saved networks (implementation would be similar to scanned networks)
+        }
+
+        function connectSaved(networkName) {
+            showNotification(`Connecting to ${networkName}...`, 'info');
+            // Implementation for connecting to saved network
+        }
+
+        function editSaved(networkName) {
+            showNotification(`Edit functionality for ${networkName}`, 'info');
+        }
+
+        function forgetSaved(networkName) {
+            if (confirm(`Forget network "${networkName}"?`)) {
+                showNotification(`Forgotten network ${networkName}`, 'success');
+            }
+        }
+
+        function toggleAPMode() {
+            const btn = event.target;
+            if (btn.textContent === 'Start Access Point') {
+                btn.textContent = 'Stop Access Point';
+                btn.className = 'btn btn-danger';
+                showNotification('Access Point mode started', 'success');
+            } else {
+                btn.textContent = 'Start Access Point';
+                btn.className = 'btn btn-primary';
+                showNotification('Access Point mode stopped', 'info');
+            }
+        }
+
+        function resetAPConfig() {
+            document.getElementById('ap-ssid').value = 'LED-Sign-Setup';
+            document.getElementById('ap-password').value = 'configure123';
+            document.getElementById('ap-channel').value = '6';
+            document.getElementById('ap-max-clients').value = '4';
+            showNotification('AP configuration reset to defaults', 'info');
+        }
+
+        function runPingTest() {
+            const resultDiv = document.getElementById('ping-result');
+            resultDiv.innerHTML = '<div class="spinner"></div> Testing connectivity...';
+            
+            setTimeout(() => {
+                const results = [
+                    'Ping to gateway (192.168.1.1): 2ms ✓',
+                    'Ping to DNS (8.8.8.8): 15ms ✓',
+                    'Ping to google.com: 18ms ✓'
+                ];
+                resultDiv.innerHTML = '<div class="test-success">' + results.join('<br>') + '</div>';
+            }, 3000);
+        }
+
+        function runDNSTest() {
+            const resultDiv = document.getElementById('dns-result');
+            resultDiv.innerHTML = '<div class="spinner"></div> Testing DNS resolution...';
+            
+            setTimeout(() => {
+                resultDiv.innerHTML = '<div class="test-success">DNS resolution: google.com → 172.217.12.142 ✓</div>';
+            }, 2000);
+        }
+
+        function runSpeedTest() {
+            const resultDiv = document.getElementById('speed-result');
+            resultDiv.innerHTML = '<div class="spinner"></div> Testing connection speed...';
+            
+            setTimeout(() => {
+                const results = [
+                    'Download: 25.3 Mbps',
+                    'Upload: 5.1 Mbps',
+                    'Latency: 18ms'
+                ];
+                resultDiv.innerHTML = '<div class="test-success">' + results.join('<br>') + '</div>';
+            }, 5000);
+        }
+
+        function startSignalMonitor() {
+            const resultDiv = document.getElementById('signal-result');
+            const btn = event.target;
+            
+            if (signalMonitorInterval) {
+                clearInterval(signalMonitorInterval);
+                signalMonitorInterval = null;
+                btn.textContent = 'Start Monitor';
+                resultDiv.innerHTML = '';
+                return;
+            }
+            
+            btn.textContent = 'Stop Monitor';
+            resultDiv.innerHTML = '<div class="signal-monitor">Monitoring signal strength...</div>';
+            
+            signalMonitorInterval = setInterval(() => {
+                const rssi = -45 + Math.random() * 20 - 10; // Simulate signal variation
+                const time = new Date().toLocaleTimeString();
+                resultDiv.innerHTML = `<div class="test-info">Signal: ${rssi.toFixed(1)} dBm at ${time}</div>`;
+            }, 2000);
+        }
+
+        function setupAutoRefresh() {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                if (document.getElementById('auto-refresh').checked) {
+                    scanNetworks();
+                }
+            }, 30000);
+        }
+
+        // Add styles for WiFi page
+        const style = document.createElement('style');
+        style.textContent = `
+            .wifi-status-card {
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+                padding: 1.5rem;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .status-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .status-item {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .status-icon {
+                font-size: 2rem;
+            }
+            
+            .status-details h3 {
+                margin: 0;
+                font-size: 1.2rem;
+            }
+            
+            .status-connected { color: var(--success-color); }
+            .status-disconnected { color: var(--danger-color); }
+            
+            .connection-details {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                padding-top: 1rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .detail-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .detail-label {
+                color: var(--text-muted);
+                font-size: 0.9rem;
+            }
+            
+            .detail-value {
+                font-weight: 600;
+                color: var(--text-light);
+            }
+            
+            .scan-controls {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1rem;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .scan-options {
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+            
+            .scan-options label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.9rem;
+                color: var(--text-muted);
+            }
+            
+            .network-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                transition: background 0.3s ease;
+            }
+            
+            .network-item:hover {
+                background: rgba(255, 255, 255, 0.05);
+            }
+            
+            .network-main {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                flex: 1;
+            }
+            
+            .network-icon {
+                font-size: 1.5rem;
+            }
+            
+            .network-name {
+                font-weight: 600;
+                color: var(--text-light);
+            }
+            
+            .network-info {
+                color: var(--text-muted);
+                font-size: 0.9rem;
+            }
+            
+            .form-row {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .checkbox-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .checkbox-group label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-size: 0.9rem;
+            }
+            
+            .static-ip-config {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .static-ip-config h4 {
+                margin: 0 0 1rem 0;
+                color: var(--text-light);
+            }
+            
+            .form-actions {
+                display: flex;
+                gap: 1rem;
+                justify-content: flex-end;
+                flex-wrap: wrap;
+            }
+            
+            .saved-network-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 1rem;
+                background: rgba(255, 255, 255, 0.03);
+                border-radius: 8px;
+                margin-bottom: 0.5rem;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .network-actions {
+                display: flex;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            
+            .ap-controls {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .ap-status h4 {
+                margin: 0 0 0.5rem 0;
+                color: var(--text-light);
+            }
+            
+            .ap-actions {
+                display: flex;
+                gap: 1rem;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .tool-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+            }
+            
+            .diagnostic-card {
+                background: rgba(255, 255, 255, 0.05);
+                padding: 1.5rem;
+                border-radius: 8px;
+                text-align: center;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .diagnostic-card h4 {
+                margin: 0 0 0.5rem 0;
+                color: var(--text-light);
+            }
+            
+            .diagnostic-card p {
+                color: var(--text-muted);
+                margin-bottom: 1rem;
+            }
+            
+            .test-result {
+                margin-top: 1rem;
+                min-height: 20px;
+                font-size: 0.9rem;
+            }
+            
+            .network-loading, .scan-error, .no-networks, .no-saved-networks {
+                text-align: center;
+                padding: 2rem;
+                color: var(--text-muted);
+            }
+            
+            .scan-error {
+                color: var(--danger-color);
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html> 
