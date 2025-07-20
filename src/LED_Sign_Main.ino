@@ -73,20 +73,35 @@ void setup() {
   }
   Serial.println("SPIFFS Mounted Successfully");
   
+  // Initialize NVS
+  Serial.println("\nInitializing NVS (Non-Volatile Storage)...");
+  if (!preferences.begin("wifi-config", false)) {
+    Serial.println("Failed to initialize NVS - Critical Error");
+    blinkLED(10, 100); // Error indicator
+    delay(1000);
+    ESP.restart();
+    return;
+  }
+  Serial.println("NVS Initialized Successfully");
+  
   // Critical: Properly initialize WiFi subsystem for ESP32-C3
   WiFi.mode(WIFI_MODE_NULL);
   delay(100);
   
   // Load saved credentials
-  preferences.begin("wifi-config", false);
+  Serial.println("\nChecking for saved WiFi credentials...");
   savedSSID = preferences.getString("ssid", "");
   savedPassword = preferences.getString("password", "");
   
   if (savedSSID.length() > 0) {
-    Serial.println("Found saved WiFi credentials");
+    Serial.println("Found saved credentials:");
+    Serial.print("SSID: ");
+    Serial.println(savedSSID);
+    Serial.println("Password: [hidden]");
     connectToWiFi();
   } else {
-    Serial.println("No saved credentials, starting setup portal");
+    Serial.println("No saved credentials found");
+    Serial.println("Starting AP mode for initial setup");
     startConfigPortal();
   }
 }
@@ -104,9 +119,9 @@ void startConfigPortal() {
   WiFi.mode(WIFI_AP);
   delay(100);
   
-  // Configure AP with static IP - Using 10.10.10.x range to avoid conflicts
-  IPAddress local_IP(10, 10, 10, 1);
-  IPAddress gateway(10, 10, 10, 1);
+  // Configure AP with standard ESP32 AP IP
+  IPAddress local_IP(192, 168, 4, 1);
+  IPAddress gateway(192, 168, 4, 1);
   IPAddress subnet(255, 255, 255, 0);
   
   Serial.println("Configuring AP...");
@@ -155,8 +170,10 @@ void startConfigPortal() {
       
       // Print DHCP range
       Serial.println("DHCP Server Range:");
-      Serial.println("Start IP: 10.10.10.2");
-      Serial.println("End IP: 10.10.10.254");
+      Serial.print("Start IP: ");
+      Serial.println(IPAddress(192, 168, 4, 2));
+      Serial.print("End IP: ");
+      Serial.println(IPAddress(192, 168, 4, 254));
       
       // Get and print current power settings
       int8_t power;
@@ -172,7 +189,7 @@ void startConfigPortal() {
       setupWebServer();
       server.begin();
       
-      Serial.println("\nPortal ready at http://10.10.10.1");
+      Serial.println("\nPortal ready at http://192.168.4.1");
       blinkLED(3, 200); // 3 blinks = portal ready
     } else {
       Serial.println("AP IP configuration failed!");
@@ -198,51 +215,101 @@ void connectToWiFi() {
   Serial.print("\nConnecting to WiFi: ");
   Serial.println(savedSSID);
   
-  WiFi.disconnect(true);
+  // Complete WiFi shutdown and cleanup
+  WiFi.disconnect(true, true);
+  WiFi.mode(WIFI_OFF);
+  delay(1000);
+  
+  // Initialize WiFi in station mode
   WiFi.mode(WIFI_STA);
   delay(100);
   
+  // Set WiFi power
+  esp_wifi_set_max_tx_power(78);  // Set to maximum power (20dBm)
+  
+  // Configure WiFi connection
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
+  
+  // Start connection attempt
+  Serial.println("Starting connection attempt...");
   WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
   
+  // Wait for connection with status updates
   int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 60) {  // Increased timeout to 30 seconds
-    delay(500);
-    Serial.print(".");
-    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-    attempts++;
+  const int maxAttempts = 30;  // 30 seconds timeout
+  bool connected = false;
+  
+  while (attempts < maxAttempts) {
+    wl_status_t status = WiFi.status();
+    
+    switch (status) {
+      case WL_CONNECTED:
+        connected = true;
+        attempts = maxAttempts;  // Exit loop
+        break;
+      
+      case WL_NO_SSID_AVAIL:
+        Serial.println("\nFailed - SSID not found");
+        attempts = maxAttempts;  // Exit loop
+        break;
+      
+      case WL_CONNECT_FAILED:
+        Serial.println("\nFailed - Invalid password");
+        attempts = maxAttempts;  // Exit loop
+        break;
+      
+      case WL_DISCONNECTED:
+      case WL_IDLE_STATUS:
+        if (attempts % 2 == 0) Serial.print(".");
+        digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+        delay(500);
+        attempts++;
+        break;
+      
+      default:
+        Serial.printf("\nUnknown status: %d\n", status);
+        attempts++;
+        delay(500);
+        break;
+    }
   }
   
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nConnected!");
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("Gateway: ");
-    Serial.println(WiFi.gatewayIP());
-    Serial.print("Subnet: ");
-    Serial.println(WiFi.subnetMask());
-    Serial.print("DNS: ");
-    Serial.println(WiFi.dnsIP());
+  if (connected) {
+    Serial.println("\nConnection Successful!");
+    Serial.println("\nNetwork Information:");
+    Serial.printf("SSID: %s\n", WiFi.SSID().c_str());
+    Serial.printf("IP Address: %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("Gateway: %s\n", WiFi.gatewayIP().toString().c_str());
+    Serial.printf("Subnet: %s\n", WiFi.subnetMask().toString().c_str());
+    Serial.printf("DNS: %s\n", WiFi.dnsIP().toString().c_str());
+    Serial.printf("MAC Address: %s\n", WiFi.macAddress().c_str());
+    Serial.printf("Signal Strength: %d dBm\n", WiFi.RSSI());
+    
+    // Get and print current power settings
+    int8_t power;
+    esp_wifi_get_max_tx_power(&power);
+    Serial.printf("TX Power: %d\n", power);
     
     wifiConfigured = true;
     digitalWrite(STATUS_LED_PIN, LOW); // LED off = connected
     
-    // Setup web server with SPIFFS support
+    // Setup web server
     setupWebServer();
-    
-    // Add reset endpoint
-    server.on("/reset", []() {
-      preferences.clear();
-      server.send(200, "text/html", "<h1>Settings Reset</h1><p>Restarting...</p>");
-      delay(1000);
-      ESP.restart();
-    });
-    
     server.begin();
-    Serial.println("Web server started at " + WiFi.localIP().toString());
+    Serial.printf("\nWeb server started at http://%s\n", WiFi.localIP().toString().c_str());
+    
+    blinkLED(2, 200); // 2 blinks = connected
   } else {
     Serial.println("\nConnection failed!");
-    Serial.print("WiFi Status: ");
-    Serial.println(WiFi.status());
+    Serial.printf("WiFi Status: %d\n", WiFi.status());
+    Serial.println("Starting AP mode for configuration...");
+    
+    // Clear saved credentials on connection failure
+    preferences.remove("ssid");
+    preferences.remove("password");
+    
+    delay(1000);
     startConfigPortal();
   }
 }
