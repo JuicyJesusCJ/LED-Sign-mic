@@ -3,139 +3,10 @@
  * Handles WebSocket communication, API calls, and shared functionality
  */
 
-// Global variables
-let websocket = null;
-let reconnectInterval = null;
-let isConnected = false;
-
-// Initialize WebSocket connection
-function initializeWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.hostname}:81`;
-    
-    try {
-        websocket = new WebSocket(wsUrl);
-        
-        websocket.onopen = function(event) {
-            console.log('WebSocket connected');
-            isConnected = true;
-            updateConnectionStatus(true);
-            clearInterval(reconnectInterval);
-        };
-        
-        websocket.onmessage = function(event) {
-            const data = JSON.parse(event.data);
-            handleWebSocketMessage(data);
-        };
-        
-        websocket.onclose = function(event) {
-            console.log('WebSocket disconnected');
-            isConnected = false;
-            updateConnectionStatus(false);
-            scheduleReconnect();
-        };
-        
-        websocket.onerror = function(error) {
-            console.error('WebSocket error:', error);
-            updateConnectionStatus(false);
-        };
-        
-    } catch (error) {
-        console.error('Failed to create WebSocket:', error);
-        updateConnectionStatus(false);
-        scheduleReconnect();
-    }
-}
-
-// Handle incoming WebSocket messages
-function handleWebSocketMessage(data) {
-    switch(data.type) {
-        case 'status_update':
-            if (typeof updateStatusDisplay === 'function') {
-                updateStatusDisplay(data);
-            }
-            break;
-            
-        case 'audio_data':
-            if (typeof updateAudioVisualization === 'function') {
-                updateAudioVisualization(data);
-            }
-            break;
-            
-        case 'config_changed':
-            if (typeof onConfigChanged === 'function') {
-                onConfigChanged(data);
-            }
-            break;
-            
-        case 'command_result':
-            handleCommandResult(data);
-            break;
-            
-        case 'welcome':
-            console.log('WebSocket welcome:', data.message);
-            break;
-            
-        default:
-            console.log('Unknown message type:', data.type);
-    }
-}
-
-// Send WebSocket command
-function sendWebSocketCommand(command, value) {
-    if (websocket && websocket.readyState === WebSocket.OPEN) {
-        const message = {
-            command: command,
-            value: value
-        };
-        websocket.send(JSON.stringify(message));
-    } else {
-        console.error('WebSocket not connected');
-        showNotification('Connection error - command not sent', 'error');
-    }
-}
-
-// Handle command results
-function handleCommandResult(data) {
-    if (data.status === 'ok') {
-        console.log(`Command ${data.command} executed successfully`);
-    } else {
-        console.error(`Command ${data.command} failed:`, data.error);
-        showNotification(`Command failed: ${data.error}`, 'error');
-    }
-}
-
-// Schedule WebSocket reconnection
-function scheduleReconnect() {
-    if (reconnectInterval) return;
-    
-    reconnectInterval = setInterval(() => {
-        if (!isConnected) {
-            console.log('Attempting to reconnect WebSocket...');
-            initializeWebSocket();
-        }
-    }, 5000);
-}
-
-// Update connection status indicator
-function updateConnectionStatus(connected) {
-    const indicator = document.getElementById('connection-status');
-    const text = document.getElementById('connection-text');
-    
-    if (indicator && text) {
-        if (connected) {
-            indicator.className = 'connection-indicator';
-            text.textContent = 'Connected';
-        } else {
-            indicator.className = 'connection-indicator error';
-            text.textContent = 'Disconnected';
-        }
-    }
-}
-
 // API helper functions
 function apiGet(endpoint) {
-    return fetch(`/api/${endpoint}`)
+    const baseUrl = window.location.protocol + '//' + window.location.host;
+    return fetch(`${baseUrl}/api/${endpoint}`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -150,6 +21,7 @@ function apiGet(endpoint) {
 }
 
 function apiPost(endpoint, data = {}) {
+    const baseUrl = window.location.protocol + '//' + window.location.host;
     const options = {
         method: 'POST',
         headers: {
@@ -158,7 +30,7 @@ function apiPost(endpoint, data = {}) {
         body: JSON.stringify(data)
     };
     
-    return fetch(`/api/${endpoint}`, options)
+    return fetch(`${baseUrl}/api/${endpoint}`, options)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -173,12 +45,13 @@ function apiPost(endpoint, data = {}) {
 }
 
 function apiPostForm(endpoint, formData) {
+    const baseUrl = window.location.protocol + '//' + window.location.host;
     const options = {
         method: 'POST',
         body: formData
     };
     
-    return fetch(`/api/${endpoint}`, options)
+    return fetch(`${baseUrl}/api/${endpoint}`, options)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -462,39 +335,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add notification styles
     addNotificationStyles();
     
-    // Initialize WebSocket if not already done
-    if (!websocket) {
-        initializeWebSocket();
-    }
-    
     // Set active navigation
     const currentPath = window.location.pathname;
-    setActiveNavigation(currentPath);
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === currentPath || 
+            (currentPath === '/' && link.getAttribute('href') === '/')) {
+            link.classList.add('active');
+        }
+    });
     
     // Show welcome message
     console.log('LED Sign Control Interface Loaded');
 });
 
-// Handle page visibility changes to manage WebSocket connection
-document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') {
-        if (!isConnected) {
-            initializeWebSocket();
-        }
-    }
-});
-
-// Handle beforeunload to clean up WebSocket
-window.addEventListener('beforeunload', function() {
-    if (websocket) {
-        websocket.close();
-    }
-});
-
 // Export functions for global use
 window.LEDSign = {
-    initializeWebSocket,
-    sendWebSocketCommand,
     apiGet,
     apiPost,
     apiPostForm,

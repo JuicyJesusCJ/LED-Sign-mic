@@ -1,654 +1,509 @@
 /*
- * LED Sign with Microphone Control
- * ESP32-C3 Main Firmware
- * 
- * Features:
- * - 100 WS2812B RGB LED control
- * - MAX4466 microphone audio processing
- * - WiFi management with captive portal
- * - Web interface for configuration
- * - Sound-reactive LED patterns
- * - Button controls
+ * LED Sign - WiFi Configuration Portal for ESP32-C3
+ * Fixed version with proper initialization
  */
 
 #include <WiFi.h>
-#include <WiFiAP.h>
 #include <WebServer.h>
-#include <WebSocketsServer.h>
-#include <SPIFFS.h>
-#include <ArduinoJson.h>
-#include <Preferences.h>
-#include <FastLED.h>
 #include <DNSServer.h>
+#include <Preferences.h>
+#include <SPIFFS.h>
+#include <ArduinoJson.h>  // Add JSON library
 
-// Hardware Pin Definitions
-#define LED_DATA_PIN     2
-#define MIC_ANALOG_PIN   3
-#define MODE_BUTTON_PIN  4
-#define POWER_BUTTON_PIN 5
-#define STATUS_LED_PIN   8
+// ESP32 specific includes
+extern "C" {
+  #include "esp_wifi.h"
+  #include "esp_system.h"
+  #include <esp_wifi_types.h>
+  #include <esp_netif.h>
+}
 
-// LED Configuration
-#define NUM_LEDS         100
-#define LED_TYPE         WS2812B
-#define COLOR_ORDER      GRB
-#define MAX_BRIGHTNESS   255
-#define FRAMES_PER_SECOND 60
-
-// Audio Configuration
-#define SAMPLE_RATE      8000
-#define SAMPLES          256
-#define NOISE_THRESHOLD  30
-
-// Network Configuration
-#define AP_SSID          "LED-Sign-Setup"
-#define AP_PASSWORD      "configure123"
+// Configuration
+#define AP_SSID          "LED-Sign-Setup"    // AP name
+#define AP_PASSWORD      "configure123"       // At least 8 characters
 #define DNS_PORT         53
 #define WEB_PORT         80
-#define WEBSOCKET_PORT   81
+#define STATUS_LED_PIN   8
+#define WIFI_CHANNEL     6                   // Use channel 6 for better stability
+#define MAX_CLIENTS      4                   // Maximum number of clients
 
-// Global Objects
-CRGB leds[NUM_LEDS];
-WebServer webServer(WEB_PORT);
-WebSocketsServer webSocket(WEBSOCKET_PORT);
+// Objects
+WebServer server(WEB_PORT);
 DNSServer dnsServer;
 Preferences preferences;
 
-// System State Variables
-struct SystemConfig {
-  // LED Settings
-  uint8_t brightness = 80;
-  uint8_t speed = 50;
-  uint8_t mode = 0;
-  CRGB currentColor = CRGB::Red;
-  bool autobrightness = false;
-  
-  // Audio Settings
-  uint8_t sensitivity = 70;
-  uint8_t noiseGate = 30;
-  bool autoGain = true;
-  uint8_t smoothing = 5;
-  
-  // System Settings
-  char deviceName[32] = "LED-Sign";
-  char timezone[16] = "UTC-5";
-  uint16_t sleepTimer = 0;
-  uint8_t buttonMode = 0;
-  uint16_t wifiTimeout = 30;
-  
-  // WiFi Settings
-  char ssid[64] = "";
-  char password[64] = "";
-} config;
-
-// System State
-bool systemOn = true;
-bool configMode = false;
-unsigned long lastModePress = 0;
-unsigned long lastPowerPress = 0;
-unsigned long lastUpdate = 0;
-uint8_t currentMode = 0;
-uint16_t audioLevel = 0;
-uint16_t audioSamples[SAMPLES];
-uint16_t sampleIndex = 0;
-
-// LED Modes
-enum LEDModes {
-  MODE_SOLID_COLOR = 0,
-  MODE_RAINBOW_STATIC,
-  MODE_RAINBOW_CYCLE,
-  MODE_COLOR_WIPE,
-  MODE_THEATER_CHASE,
-  MODE_BREATHING,
-  MODE_FIRE_EFFECT,
-  MODE_VU_METER,
-  MODE_SPECTRUM_ANALYZER,
-  MODE_BEAT_FLASH,
-  MODE_SOUND_COLORS,
-  MODE_AUDIO_RIPPLE,
-  MODE_COUNT
-};
-
-const char* modeNames[] = {
-  "Solid Color", "Rainbow Static", "Rainbow Cycle", "Color Wipe",
-  "Theater Chase", "Breathing", "Fire Effect", "VU Meter",
-  "Spectrum Analyzer", "Beat Flash", "Sound Colors", "Audio Ripple"
-};
+// State variables
+bool wifiConfigured = false;
+String savedSSID = "";
+String savedPassword = "";
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("LED Sign Starting...");
-  
-  // Initialize hardware
-  initializePins();
-  initializeLEDs();
-  initializeAudio();
-  
-  // Load configuration
-  loadConfiguration();
-  
-  // Initialize WiFi
-  initializeWiFi();
-  
-  // Initialize web server
-  initializeWebServer();
-  initializeWebSocket();
-  
-  // Initialize file system
-  if (!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS Mount Failed");
-  }
-  
-  Serial.println("LED Sign Ready!");
-  
-  // Initial LED test
-  testLEDs();
-}
-
-void loop() {
-  // Handle web server and websockets
-  webServer.handleClient();
-  webSocket.loop();
-  dnsServer.processNextRequest();
-  
-  // Handle button inputs
-  handleButtons();
-  
-  // Process audio input
-  processAudio();
-  
-  // Update LED patterns
-  updateLEDs();
-  
-  // Send periodic updates
-  sendWebSocketUpdates();
-  
-  // Small delay for stability
-  delay(10);
-}
-
-void initializePins() {
-  pinMode(MODE_BUTTON_PIN, INPUT_PULLUP);
-  pinMode(POWER_BUTTON_PIN, INPUT_PULLUP);
+  // Critical: Initialize hardware first
   pinMode(STATUS_LED_PIN, OUTPUT);
-  pinMode(MIC_ANALOG_PIN, INPUT);
+  digitalWrite(STATUS_LED_PIN, HIGH);
   
-  digitalWrite(STATUS_LED_PIN, HIGH); // Status LED on during startup
-}
+  // Initialize Serial with proper timing for ESP32-C3
+  Serial.begin(115200);
+  while (!Serial && millis() < 5000); // Wait up to 5 seconds
+  delay(1000); // Extra delay for USB CDC to stabilize
+  
+  Serial.println("\n\n=====================================");
+  Serial.println("LED Sign WiFi Portal - ESP32-C3");
+  Serial.println("=====================================");
 
-void initializeLEDs() {
-  FastLED.addLeds<LED_TYPE, LED_DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-  FastLED.setBrightness(map(config.brightness, 0, 100, 0, MAX_BRIGHTNESS));
-  FastLED.setMaxPowerInVoltsAndMilliamps(5, 6000); // Safety limit
-  FastLED.clear();
-  FastLED.show();
-}
-
-void initializeAudio() {
-  // Initialize audio sampling
-  analogReadResolution(12); // 12-bit ADC resolution
-  for (int i = 0; i < SAMPLES; i++) {
-    audioSamples[i] = 0;
-  }
-}
-
-void loadConfiguration() {
-  preferences.begin("ledsign", false);
-  
-  // Load settings with defaults
-  config.brightness = preferences.getUChar("brightness", 80);
-  config.speed = preferences.getUChar("speed", 50);
-  config.mode = preferences.getUChar("mode", 0);
-  config.sensitivity = preferences.getUChar("sensitivity", 70);
-  config.noiseGate = preferences.getUChar("noiseGate", 30);
-  config.autoGain = preferences.getBool("autoGain", true);
-  config.sleepTimer = preferences.getUShort("sleepTimer", 0);
-  
-  preferences.getString("deviceName", config.deviceName, sizeof(config.deviceName));
-  preferences.getString("ssid", config.ssid, sizeof(config.ssid));
-  preferences.getString("password", config.password, sizeof(config.password));
-  
-  preferences.end();
-  
-  currentMode = config.mode;
-}
-
-void saveConfiguration() {
-  preferences.begin("ledsign", false);
-  
-  preferences.putUChar("brightness", config.brightness);
-  preferences.putUChar("speed", config.speed);
-  preferences.putUChar("mode", config.mode);
-  preferences.putUChar("sensitivity", config.sensitivity);
-  preferences.putUChar("noiseGate", config.noiseGate);
-  preferences.putBool("autoGain", config.autoGain);
-  preferences.putUShort("sleepTimer", config.sleepTimer);
-  
-  preferences.putString("deviceName", config.deviceName);
-  preferences.putString("ssid", config.ssid);
-  preferences.putString("password", config.password);
-  
-  preferences.end();
-}
-
-void initializeWiFi() {
-  // Try to connect to saved WiFi first
-  if (strlen(config.ssid) > 0) {
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(config.ssid, config.password);
-    
-    Serial.print("Connecting to WiFi");
-    unsigned long startTime = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - startTime < (config.wifiTimeout * 1000)) {
-      delay(500);
-      Serial.print(".");
-    }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-      Serial.println();
-      Serial.print("Connected! IP: ");
-      Serial.println(WiFi.localIP());
-      digitalWrite(STATUS_LED_PIN, LOW); // Status LED off when connected
-      return;
-    }
-  }
-  
-  // If connection failed, start AP mode
-  startAPMode();
-}
-
-void startAPMode() {
-  Serial.println("Starting Access Point mode");
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID, AP_PASSWORD);
-  
-  // Start DNS server for captive portal
-  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
-  
-  Serial.print("AP IP address: ");
-  Serial.println(WiFi.softAPIP());
-  
-  configMode = true;
-  
-  // Blink status LED to indicate AP mode
-  for (int i = 0; i < 6; i++) {
-    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-    delay(200);
-  }
-}
-
-void handleButtons() {
-  // Handle Mode Button
-  if (digitalRead(MODE_BUTTON_PIN) == LOW) {
-    if (millis() - lastModePress > 50) { // Debounce
-      unsigned long pressStart = millis();
-      while (digitalRead(MODE_BUTTON_PIN) == LOW) {
-        delay(10);
-      }
-      unsigned long pressDuration = millis() - pressStart;
-      
-      if (pressDuration > 2000) {
-        // Long press - enter config mode
-        toggleConfigMode();
-      } else {
-        // Short press - next mode
-        nextMode();
-      }
-      lastModePress = millis();
-    }
-  }
-  
-  // Handle Power Button
-  if (digitalRead(POWER_BUTTON_PIN) == LOW) {
-    if (millis() - lastPowerPress > 50) { // Debounce
-      unsigned long pressStart = millis();
-      while (digitalRead(POWER_BUTTON_PIN) == LOW) {
-        delay(10);
-      }
-      unsigned long pressDuration = millis() - pressStart;
-      
-      if (pressDuration > 3000) {
-        // Long press - factory reset
-        factoryReset();
-      } else {
-        // Short press - toggle power
-        togglePower();
-      }
-      lastPowerPress = millis();
-    }
-  }
-}
-
-void nextMode() {
-  currentMode = (currentMode + 1) % MODE_COUNT;
-  config.mode = currentMode;
-  saveConfiguration();
-  
-  Serial.print("Mode changed to: ");
-  Serial.println(modeNames[currentMode]);
-  
-  // Flash LEDs to indicate mode change
-  fill_solid(leds, NUM_LEDS, CRGB::White);
-  FastLED.show();
-  delay(100);
-  FastLED.clear();
-  FastLED.show();
-}
-
-void togglePower() {
-  systemOn = !systemOn;
-  Serial.print("System ");
-  Serial.println(systemOn ? "ON" : "OFF");
-  
-  if (!systemOn) {
-    FastLED.clear();
-    FastLED.show();
-  }
-}
-
-void toggleConfigMode() {
-  configMode = !configMode;
-  Serial.print("Config mode ");
-  Serial.println(configMode ? "ON" : "OFF");
-  
-  if (configMode) {
-    startAPMode();
-  }
-}
-
-void factoryReset() {
-  Serial.println("Factory Reset!");
-  preferences.begin("ledsign", false);
-  preferences.clear();
-  preferences.end();
-  
-  // Flash LEDs red to indicate reset
-  fill_solid(leds, NUM_LEDS, CRGB::Red);
-  FastLED.show();
-  delay(1000);
-  
-  ESP.restart();
-}
-
-void processAudio() {
-  // Read analog value from microphone
-  uint16_t sample = analogRead(MIC_ANALOG_PIN);
-  
-  // Apply noise gate
-  if (sample < map(config.noiseGate, 0, 100, 0, 4095)) {
-    sample = 0;
-  }
-  
-  // Store sample
-  audioSamples[sampleIndex] = sample;
-  sampleIndex = (sampleIndex + 1) % SAMPLES;
-  
-  // Calculate audio level (RMS)
-  unsigned long sum = 0;
-  for (int i = 0; i < SAMPLES; i++) {
-    sum += audioSamples[i] * audioSamples[i];
-  }
-  audioLevel = sqrt(sum / SAMPLES);
-  
-  // Apply sensitivity
-  audioLevel = map(audioLevel, 0, 4095, 0, map(config.sensitivity, 0, 100, 0, 4095));
-  audioLevel = constrain(audioLevel, 0, 4095);
-}
-
-void updateLEDs() {
-  if (!systemOn) {
+  // Initialize SPIFFS with formatting if needed
+  if(!SPIFFS.begin(true)) {
+    Serial.println("SPIFFS Mount Failed - Critical Error");
+    blinkLED(10, 100); // Error indicator
+    delay(1000);
+    ESP.restart();
     return;
   }
   
-  switch (currentMode) {
-    case MODE_SOLID_COLOR:
-      solidColor();
-      break;
-    case MODE_RAINBOW_STATIC:
-      rainbowStatic();
-      break;
-    case MODE_RAINBOW_CYCLE:
-      rainbowCycle();
-      break;
-    case MODE_COLOR_WIPE:
-      colorWipe();
-      break;
-    case MODE_THEATER_CHASE:
-      theaterChase();
-      break;
-    case MODE_BREATHING:
-      breathing();
-      break;
-    case MODE_FIRE_EFFECT:
-      fireEffect();
-      break;
-    case MODE_VU_METER:
-      vuMeter();
-      break;
-    case MODE_SPECTRUM_ANALYZER:
-      spectrumAnalyzer();
-      break;
-    case MODE_BEAT_FLASH:
-      beatFlash();
-      break;
-    case MODE_SOUND_COLORS:
-      soundColors();
-      break;
-    case MODE_AUDIO_RIPPLE:
-      audioRipple();
-      break;
+  // List files in SPIFFS
+  Serial.println("\nSPIFFS Files:");
+  File root = SPIFFS.open("/");
+  File file = root.openNextFile();
+  while(file) {
+    Serial.print("  ");
+    Serial.print(file.name());
+    Serial.print("  -  ");
+    Serial.println(file.size());
+    file = root.openNextFile();
   }
+  Serial.println("SPIFFS Mounted Successfully");
   
-  FastLED.setBrightness(map(config.brightness, 0, 100, 0, MAX_BRIGHTNESS));
-  FastLED.show();
-}
-
-// LED Pattern Functions
-void solidColor() {
-  fill_solid(leds, NUM_LEDS, config.currentColor);
-}
-
-void rainbowStatic() {
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CHSV(map(i, 0, NUM_LEDS-1, 0, 255), 255, 255);
-  }
-}
-
-void rainbowCycle() {
-  static uint8_t hue = 0;
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CHSV((hue + (i * 255 / NUM_LEDS)) & 255, 255, 255);
-  }
-  hue += map(config.speed, 0, 100, 1, 10);
-}
-
-void colorWipe() {
-  static uint8_t pos = 0;
-  static unsigned long lastUpdate = 0;
+  // Critical: Properly initialize WiFi subsystem for ESP32-C3
+  WiFi.mode(WIFI_MODE_NULL);
+  delay(100);
   
-  if (millis() - lastUpdate > map(config.speed, 0, 100, 100, 10)) {
-    FastLED.clear();
-    for (int i = 0; i <= pos; i++) {
-      leds[i] = config.currentColor;
-    }
-    pos++;
-    if (pos >= NUM_LEDS) pos = 0;
-    lastUpdate = millis();
-  }
-}
-
-void theaterChase() {
-  static uint8_t offset = 0;
-  static unsigned long lastUpdate = 0;
+  // Load saved credentials
+  preferences.begin("wifi-config", false);
+  savedSSID = preferences.getString("ssid", "");
+  savedPassword = preferences.getString("password", "");
   
-  if (millis() - lastUpdate > map(config.speed, 0, 100, 200, 20)) {
-    FastLED.clear();
-    for (int i = offset; i < NUM_LEDS; i += 3) {
-      leds[i] = config.currentColor;
-    }
-    offset = (offset + 1) % 3;
-    lastUpdate = millis();
-  }
-}
-
-void breathing() {
-  static uint8_t brightness = 0;
-  static int8_t direction = 1;
-  static unsigned long lastUpdate = 0;
-  
-  if (millis() - lastUpdate > map(config.speed, 0, 100, 50, 5)) {
-    brightness += direction * 5;
-    if (brightness >= 255 || brightness <= 0) {
-      direction = -direction;
-    }
-    
-    fill_solid(leds, NUM_LEDS, config.currentColor);
-    FastLED.setBrightness(brightness);
-    lastUpdate = millis();
-  }
-}
-
-void fireEffect() {
-  static byte heat[NUM_LEDS];
-  
-  // Cool down every cell a little
-  for (int i = 0; i < NUM_LEDS; i++) {
-    heat[i] = qsub8(heat[i], random8(0, ((55 * 10) / NUM_LEDS) + 2));
-  }
-  
-  // Heat from each cell drifts 'up' and diffuses a little
-  for (int k = NUM_LEDS - 1; k >= 2; k--) {
-    heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
-  }
-  
-  // Randomly ignite new 'sparks' of heat near the bottom
-  if (random8() < 120) {
-    int y = random8(7);
-    heat[y] = qadd8(heat[y], random8(160, 255));
-  }
-  
-  // Map from heat cells to LED colors
-  for (int j = 0; j < NUM_LEDS; j++) {
-    CRGB color = HeatColor(heat[j]);
-    leds[j] = color;
-  }
-}
-
-void vuMeter() {
-  FastLED.clear();
-  
-  int numLEDs = map(audioLevel, 0, 4095, 0, NUM_LEDS);
-  
-  for (int i = 0; i < numLEDs; i++) {
-    if (i < NUM_LEDS / 3) {
-      leds[i] = CRGB::Green;
-    } else if (i < (NUM_LEDS * 2) / 3) {
-      leds[i] = CRGB::Yellow;
-    } else {
-      leds[i] = CRGB::Red;
-    }
-  }
-}
-
-void spectrumAnalyzer() {
-  // Simplified spectrum analyzer using audio level
-  FastLED.clear();
-  
-  int bands = 8;
-  int ledsPerBand = NUM_LEDS / bands;
-  
-  for (int band = 0; band < bands; band++) {
-    int height = map(audioLevel + random8(0, 100), 0, 4095, 0, ledsPerBand);
-    uint8_t hue = map(band, 0, bands-1, 0, 255);
-    
-    for (int i = 0; i < height; i++) {
-      int ledIndex = band * ledsPerBand + i;
-      if (ledIndex < NUM_LEDS) {
-        leds[ledIndex] = CHSV(hue, 255, 255);
-      }
-    }
-  }
-}
-
-void beatFlash() {
-  static uint16_t lastAudioLevel = 0;
-  static unsigned long lastBeat = 0;
-  
-  // Simple beat detection
-  if (audioLevel > lastAudioLevel + 500 && millis() - lastBeat > 300) {
-    fill_solid(leds, NUM_LEDS, CRGB::White);
-    lastBeat = millis();
+  if (savedSSID.length() > 0) {
+    Serial.println("Found saved WiFi credentials");
+    connectToWiFi();
   } else {
-    fadeToBlackBy(leds, NUM_LEDS, 50);
+    Serial.println("No saved credentials, starting setup portal");
+    startConfigPortal();
   }
-  
-  lastAudioLevel = audioLevel;
 }
 
-void soundColors() {
-  uint8_t hue = map(audioLevel, 0, 4095, 0, 255);
-  uint8_t brightness = map(audioLevel, 0, 4095, 0, 255);
-  fill_solid(leds, NUM_LEDS, CHSV(hue, 255, brightness));
-}
-
-void audioRipple() {
-  static int center = NUM_LEDS / 2;
-  static uint8_t wave = 0;
+void startConfigPortal() {
+  Serial.println("\nStarting Configuration Portal...");
   
-  if (audioLevel > 100) {
-    wave = 255;
+  // Complete WiFi shutdown and cleanup
+  WiFi.disconnect(true, true);
+  WiFi.mode(WIFI_OFF);
+  delay(1000);
+  
+  // Initialize WiFi with full power
+  esp_wifi_set_max_tx_power(78);  // Set to maximum power (20dBm)
+  WiFi.mode(WIFI_AP);
+  delay(100);
+  
+  // Configure AP with static IP - Using 10.10.10.x range to avoid conflicts
+  IPAddress local_IP(10, 10, 10, 1);
+  IPAddress gateway(10, 10, 10, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  
+  Serial.println("Configuring AP...");
+  Serial.print("Setting Soft-AP configuration ... ");
+  
+  // Set WiFi country for proper channel operation
+  esp_wifi_set_country_code("US", true);
+  delay(100);
+  
+  // Configure the AP with static IP
+  if (!WiFi.softAPConfig(local_IP, gateway, subnet)) {
+    Serial.println("AP Config Failed!");
+    blinkLED(5, 100); // Error indicator
+    delay(1000);
+    ESP.restart(); // Restart on failure
+    return;
   }
   
-  if (wave > 0) {
-    fadeToBlackBy(leds, NUM_LEDS, 10);
+  Serial.println("AP Config Success!");
+  
+  // Start Access Point with specific channel and max clients
+  Serial.print("Starting AP with SSID: ");
+  Serial.println(AP_SSID);
+  
+  WiFi.softAPdisconnect(true);
+  delay(500);
+  
+  // Start AP with hidden SSID disabled and max connections
+  if (WiFi.softAP(AP_SSID, AP_PASSWORD, WIFI_CHANNEL, 0, MAX_CLIENTS)) {
+    delay(500); // Let it stabilize
     
-    int size = map(255 - wave, 0, 255, 0, NUM_LEDS / 2);
-    uint8_t brightness = wave;
-    
-    for (int i = max(0, center - size); i <= min(NUM_LEDS - 1, center + size); i++) {
-      leds[i] = CHSV(map(audioLevel, 0, 4095, 0, 255), 255, brightness);
+    // Verify AP started correctly
+    IPAddress myIP = WiFi.softAPIP();
+    if (myIP == local_IP) {
+      Serial.println("Access Point Started Successfully!");
+      Serial.print("SSID: ");
+      Serial.println(AP_SSID);
+      Serial.print("Password: ");
+      Serial.println(AP_PASSWORD);
+      Serial.print("Channel: ");
+      Serial.println(WIFI_CHANNEL);
+      Serial.print("AP IP address: ");
+      Serial.println(myIP);
+      Serial.print("AP MAC address: ");
+      Serial.println(WiFi.softAPmacAddress());
+      
+      // Print DHCP range
+      Serial.println("DHCP Server Range:");
+      Serial.println("Start IP: 10.10.10.2");
+      Serial.println("End IP: 10.10.10.254");
+      
+      // Get and print current power settings
+      int8_t power;
+      esp_wifi_get_max_tx_power(&power);
+      Serial.print("TX Power: ");
+      Serial.println(power);
+      
+      // Start DNS server for captive portal
+      dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+      dnsServer.start(DNS_PORT, "*", local_IP);
+      
+      // Setup web server
+      setupWebServer();
+      server.begin();
+      
+      Serial.println("\nPortal ready at http://10.10.10.1");
+      blinkLED(3, 200); // 3 blinks = portal ready
+    } else {
+      Serial.println("AP IP configuration failed!");
+      Serial.print("Expected IP: ");
+      Serial.println(local_IP);
+      Serial.print("Actual IP: ");
+      Serial.println(myIP);
+      blinkLED(5, 100);
+      delay(1000);
+      ESP.restart();
     }
-    
-    wave = max(0, wave - 10);
+  } else {
+    Serial.println("Failed to start AP!");
+    Serial.println("WiFi Status: " + String(WiFi.status()));
+    Serial.println("Retrying in 5 seconds...");
+    blinkLED(5, 100); // 5 fast blinks = error
+    delay(5000);
+    ESP.restart(); // Restart on failure
   }
 }
 
-void testLEDs() {
-  // Quick LED test on startup
-  fill_solid(leds, NUM_LEDS, CRGB::Red);
-  FastLED.show();
-  delay(300);
+void connectToWiFi() {
+  Serial.print("\nConnecting to WiFi: ");
+  Serial.println(savedSSID);
   
-  fill_solid(leds, NUM_LEDS, CRGB::Green);
-  FastLED.show();
-  delay(300);
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_STA);
+  delay(100);
   
-  fill_solid(leds, NUM_LEDS, CRGB::Blue);
-  FastLED.show();
-  delay(300);
+  WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
   
-  FastLED.clear();
-  FastLED.show();
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 60) {  // Increased timeout to 30 seconds
+    delay(500);
+    Serial.print(".");
+    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nConnected!");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+    Serial.print("Gateway: ");
+    Serial.println(WiFi.gatewayIP());
+    Serial.print("Subnet: ");
+    Serial.println(WiFi.subnetMask());
+    Serial.print("DNS: ");
+    Serial.println(WiFi.dnsIP());
+    
+    wifiConfigured = true;
+    digitalWrite(STATUS_LED_PIN, LOW); // LED off = connected
+    
+    // Setup web server with SPIFFS support
+    setupWebServer();
+    
+    // Add reset endpoint
+    server.on("/reset", []() {
+      preferences.clear();
+      server.send(200, "text/html", "<h1>Settings Reset</h1><p>Restarting...</p>");
+      delay(1000);
+      ESP.restart();
+    });
+    
+    server.begin();
+    Serial.println("Web server started at " + WiFi.localIP().toString());
+  } else {
+    Serial.println("\nConnection failed!");
+    Serial.print("WiFi Status: ");
+    Serial.println(WiFi.status());
+    startConfigPortal();
+  }
 }
 
-void sendWebSocketUpdates() {
-  static unsigned long lastUpdate = 0;
-  
-  if (millis() - lastUpdate > 100) { // Send updates every 100ms
-    StaticJsonDocument<512> doc;
-    doc["type"] = "status_update";
-    doc["power"] = systemOn;
-    doc["mode"] = currentMode;
-    doc["mode_name"] = modeNames[currentMode];
-    doc["brightness"] = config.brightness;
-    doc["audio_level"] = audioLevel;
+// Helper function to escape JSON strings
+String escapeJSON(const String& str) {
+  String escaped = "";
+  for (char c : str) {
+    switch (c) {
+      case '\"': escaped += "\\\""; break;
+      case '\\': escaped += "\\\\"; break;
+      case '\b': escaped += "\\b"; break;
+      case '\f': escaped += "\\f"; break;
+      case '\n': escaped += "\\n"; break;
+      case '\r': escaped += "\\r"; break;
+      case '\t': escaped += "\\t"; break;
+      default:
+        if (c < 0x20) {
+          char buf[7];
+          snprintf(buf, sizeof(buf), "\\u%04x", c);
+          escaped += buf;
+        } else {
+          escaped += c;
+        }
+    }
+  }
+  return escaped;
+}
+
+void setupWebServer() {
+  // API endpoints
+  server.on("/api/status", HTTP_GET, []() {
+    DynamicJsonDocument doc(512);
     doc["wifi_connected"] = WiFi.status() == WL_CONNECTED;
+    doc["wifi_ssid"] = WiFi.SSID();
+    doc["ip_address"] = WiFi.localIP().toString();
+    doc["mac_address"] = WiFi.macAddress();
+    doc["rssi"] = WiFi.RSSI();
     doc["uptime"] = millis() / 1000;
     
-    String message;
-    serializeJson(doc, message);
-    webSocket.broadcastTXT(message);
+    String response;
+    serializeJson(doc, response);
     
-    lastUpdate = millis();
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, F("application/json"), response);
+  });
+
+  server.on("/api/wifi/scan", HTTP_GET, []() {
+    WiFi.scanNetworks(true);
+    DynamicJsonDocument doc(128);
+    doc["status"] = "scanning";
+    String response;
+    serializeJson(doc, response);
+    
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, F("application/json"), response);
+  });
+
+  server.on("/api/scanresults", HTTP_GET, []() {
+    DynamicJsonDocument doc(4096);
+    JsonArray networks = doc.createNestedArray("networks");
+    
+    int n = WiFi.scanComplete();
+    if (n > 0) {
+      for (int i = 0; i < n; i++) {
+        JsonObject network = networks.createNestedObject();
+        network["ssid"] = WiFi.SSID(i);
+        network["rssi"] = WiFi.RSSI(i);
+        network["encryption"] = WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? "Open" : "WPA2";
+      }
+      WiFi.scanDelete();
+      WiFi.scanNetworks(true);
+    }
+    
+    String response;
+    serializeJson(doc, response);
+    
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, F("application/json"), response);
+  });
+
+  server.on("/api/wifi/connect", HTTP_POST, []() {
+    if (!server.hasArg("ssid") || !server.hasArg("password")) {
+      server.send(400, F("application/json"), F("{\"status\":\"error\",\"message\":\"Missing credentials\"}"));
+      return;
+    }
+    
+    String ssid = server.arg("ssid");
+    String password = server.arg("password");
+    
+    if (ssid.length() == 0 || password.length() < 8) {
+      server.send(400, F("application/json"), F("{\"status\":\"error\",\"message\":\"Invalid credentials\"}"));
+      return;
+    }
+    
+    preferences.putString("ssid", ssid);
+    preferences.putString("password", password);
+    
+    server.send(200, F("application/json"), F("{\"status\":\"connected\"}"));
+    delay(500);
+    ESP.restart();
+  });
+
+  // Handle static files from SPIFFS
+  server.onNotFound([]() {
+    if (!handleFileRead(server.uri())) {
+      server.send(404, "text/plain", "File Not Found");
+    }
+  });
+  
+  // Start server
+  server.begin();
+  Serial.println("\nWeb server started");
+}
+
+bool handleFileRead(String path) {
+  Serial.print("handleFileRead: ");
+  Serial.println(path);
+
+  if (path.endsWith("/")) {
+    path += "index.html";
   }
-} 
+  
+  String contentType;
+  if (path.endsWith(".html")) {
+    contentType = F("text/html");
+  } else if (path.endsWith(".css")) {
+    contentType = F("text/css");
+  } else if (path.endsWith(".js")) {
+    contentType = F("application/javascript");
+  } else if (path.endsWith(".json")) {
+    contentType = F("application/json");
+  } else {
+    contentType = F("text/plain");
+  }
+
+  // Keep the leading slash for SPIFFS
+  String spiffsPath = path;
+  if (!spiffsPath.startsWith("/")) {
+    spiffsPath = "/" + path;
+  }
+  
+  Serial.print("SPIFFS path: ");
+  Serial.println(spiffsPath);
+  
+  if (SPIFFS.exists(spiffsPath)) {
+    Serial.println("File exists");
+    File file = SPIFFS.open(spiffsPath, "r");
+    if (!file) {
+      Serial.println("Failed to open file");
+      return false;
+    }
+    
+    size_t fileSize = file.size();
+    Serial.print("File size: ");
+    Serial.println(fileSize);
+    
+    server.sendHeader("Content-Length", String(fileSize));
+    server.sendHeader("Cache-Control", "no-cache");
+    
+    if (server.streamFile(file, contentType) != fileSize) {
+      Serial.println("Sent less data than expected!");
+    } else {
+      Serial.println("File sent successfully");
+    }
+    
+    file.close();
+    return true;
+  }
+  
+  Serial.println("File not found");
+  return false;
+}
+
+// Helper function to get content type based on file extension
+String getContentType(String filename) {
+  if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".css")) return "text/css";
+  else if(filename.endsWith(".js")) return "application/javascript";
+  else if(filename.endsWith(".json")) return "application/json";
+  return "text/plain";
+}
+
+void blinkLED(int times, int delayMs) {
+  for (int i = 0; i < times; i++) {
+    digitalWrite(STATUS_LED_PIN, HIGH);
+    delay(delayMs);
+    digitalWrite(STATUS_LED_PIN, LOW);
+    delay(delayMs);
+  }
+}
+
+void loop() {
+  if (!wifiConfigured) {
+    // Process DNS requests more frequently
+    for(int i = 0; i < 10; i++) {
+      dnsServer.processNextRequest();
+      server.handleClient();  // Handle web requests more frequently in AP mode
+      delay(1);
+    }
+    
+    // Monitor AP status
+    static unsigned long lastAPCheck = 0;
+    if (millis() - lastAPCheck > 5000) { // Check every 5 seconds
+      lastAPCheck = millis();
+      
+      // Verify AP is still running
+      if (WiFi.getMode() != WIFI_AP && WiFi.getMode() != WIFI_AP_STA) {
+        Serial.println("AP mode lost! Restarting...");
+        delay(1000);
+        ESP.restart();
+      }
+      
+      // Print AP status
+      Serial.println("\nAP Status:");
+      Serial.print("Channel: ");
+      Serial.println(WiFi.channel());
+      Serial.print("Connected clients: ");
+      Serial.println(WiFi.softAPgetStationNum());
+      
+      // Print client details if any are connected
+      wifi_sta_list_t stationList;
+      esp_netif_sta_list_t adapterList;
+      esp_wifi_ap_get_sta_list(&stationList);
+      esp_netif_get_sta_list(&stationList, &adapterList);
+      
+      for(int i = 0; i < adapterList.num; i++) {
+        esp_netif_sta_info_t station = adapterList.sta[i];
+        Serial.print("Client ");
+        Serial.print(i + 1);
+        Serial.print(" MAC: ");
+        char macStr[18];
+        snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+                station.mac[0], station.mac[1], station.mac[2],
+                station.mac[3], station.mac[4], station.mac[5]);
+        Serial.print(macStr);
+        Serial.print(" IP: ");
+        Serial.println(IPAddress(station.ip.addr));
+      }
+      
+      // Get and print current power settings
+      int8_t power;
+      esp_wifi_get_max_tx_power(&power);
+      Serial.print("Current TX Power: ");
+      Serial.println(power);
+    }
+  } else {
+    server.handleClient();
+  }
+  
+  // Status LED
+  static unsigned long lastBlink = 0;
+  if (!wifiConfigured && millis() - lastBlink > 2000) {
+    digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+    lastBlink = millis();
+  }
+  
+  delay(1); // Small delay to prevent watchdog issues
+}
+
+ 

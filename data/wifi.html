@@ -6,6 +6,7 @@
     <title>📶 WiFi Settings - LED Sign</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌈</text></svg>">
+    <script src="app.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -259,7 +260,6 @@
         <span id="connection-text">Connected</span>
     </div>
 
-    <script src="app.js"></script>
     <script>
         let autoRefreshInterval = null;
         let signalMonitorInterval = null;
@@ -290,7 +290,7 @@
         }
 
         function loadWiFiStatus() {
-            apiGet('status').then(data => {
+            LEDSign.apiGet('status').then(data => {
                 updateConnectionStatus(data);
             }).catch(error => {
                 console.error('Failed to load WiFi status:', error);
@@ -364,14 +364,32 @@
             scanText.textContent = 'Scanning...';
             networkList.innerHTML = '<div class="network-loading"><div class="spinner"></div> Scanning for networks...</div>';
 
-            apiGet('wifi/scan').then(data => {
-                displayNetworks(data.networks);
-            }).catch(error => {
-                networkList.innerHTML = '<div class="scan-error">Error scanning networks: ' + error.message + '</div>';
-            }).finally(() => {
-                scanBtn.disabled = false;
-                scanText.textContent = 'Scan for Networks';
-            });
+            LEDSign.apiGet('wifi/scan')
+                .then(() => {
+                    // Wait 2 seconds for scan to complete
+                    setTimeout(() => {
+                        LEDSign.apiGet('scanresults')
+                            .then(data => {
+                                if (data && data.networks) {
+                                    displayNetworks(data.networks);
+                                } else {
+                                    networkList.innerHTML = '<div class="no-networks">No networks found</div>';
+                                }
+                            })
+                            .catch(error => {
+                                networkList.innerHTML = '<div class="scan-error">Error getting scan results: ' + error.message + '</div>';
+                            })
+                            .finally(() => {
+                                scanBtn.disabled = false;
+                                scanText.textContent = 'Scan for Networks';
+                            });
+                    }, 2000);
+                })
+                .catch(error => {
+                    networkList.innerHTML = '<div class="scan-error">Error starting scan: ' + error.message + '</div>';
+                    scanBtn.disabled = false;
+                    scanText.textContent = 'Scan for Networks';
+                });
         }
 
         function displayNetworks(networks) {
@@ -453,7 +471,7 @@
             setLoading('wifi-connect-form', true);
             showNotification(`Connecting to ${ssid}...`, 'info');
 
-            apiPostForm('wifi/connect', formData).then(data => {
+            LEDSign.apiPostForm('wifi/connect', formData).then(data => {
                 if (data.status === 'connected') {
                     showNotification(`Successfully connected to ${ssid}!`, 'success');
                     loadWiFiStatus();
